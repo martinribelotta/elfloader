@@ -1,5 +1,5 @@
-SRC=main.c
-ASRC=startup_ARMCM4.S
+SRC=main.c arm/fault.c
+ASRC=arm/startup_ARMCM4.S
 OBJ=$(SRC:.c=.o) $(ASRC:.S=.o)
 
 TARGET=elfloader
@@ -10,7 +10,8 @@ AS=$(CROSS)gcc
 LD=$(CROSS)gcc
 
 CFLAGS=-O0 -ggdb3 -mcpu=cortex-m4 -mthumb \
-	-flto -ffunction-sections -fdata-sections
+	-flto -ffunction-sections -fdata-sections \
+	-Iarm/CMSIS/include
 
 %.o: %.S
 	$(AS) -c $(CFLAGS) -o $@ $^

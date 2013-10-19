@@ -159,7 +159,7 @@ Reset_Handler:
     bl    __START
     .pool
     .size Reset_Handler, . - Reset_Handler
-    
+
 /*    Macro to define default handlers. Default handler
  *    will be weak symbol and just dead loops. They can be
  *    overwritten by other handlers */
