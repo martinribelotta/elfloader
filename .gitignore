@@ -11,3 +11,9 @@
 *.lai
 *.la
 *.a
+
+# Embedded compile binaries
+*.elf
+
+# Application
+elfloader

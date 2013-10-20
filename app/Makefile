@@ -1,7 +1,7 @@
-CC=arm-none-eabi-gcc
-#LD=arm-none-eabi-ld
-LD=arm-none-eabi-gcc
-STRIP=arm-none-eabi-strip
+CROSS?=arm-none-eabi-
+CC=$(CROSS)gcc
+LD=$(CROSS)gcc
+STRIP=$(CROSS)strip
 
 SRC=main.c start.c
 OBJ=$(SRC:.c=.o)

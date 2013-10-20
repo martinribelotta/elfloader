@@ -227,10 +227,11 @@ int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s, const char *name) {
 					Elf32_Addr symAddr = ((Elf32_Addr) symSec->data)
 							+ sym.st_value;
 					Elf32_Addr relAddr = ((Elf32_Addr) s->data) + rel.r_offset;
+					printf(" symAddr=%08X relAddr=%08X\n", symAddr, relAddr);
 					if (symSec->index == e->text.index) {
 						printf("Fixing thumb addr %p to %p\n", (void*) relAddr,
 								(void*) (relAddr | 1));
-						relAddr |= 1; /* thumb fix */
+						symAddr |= 1; /* thumb fix */
 					}
 					relocateSymbol(relAddr, relType, symAddr);
 				} else
