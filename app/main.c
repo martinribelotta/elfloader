@@ -1,6 +1,10 @@
 #include "sysent.h"
 
-int main(void) {
+void banner(void) {
 	syscalls->printf("Hola mundo el %s a las %s\n", __DATE__, __TIME__);
+}
+
+int main(void) {
+	banner();
 	return 0;
 }

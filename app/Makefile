@@ -2,6 +2,7 @@ CROSS?=arm-none-eabi-
 CC=$(CROSS)gcc
 LD=$(CROSS)gcc
 STRIP=$(CROSS)strip
+SIZE=$(CROSS)size
 
 SRC=main.c start.c
 OBJ=$(SRC:.c=.o)
@@ -10,13 +11,15 @@ OPT?=0
 CFLAGS=-mcpu=cortex-m3 -mthumb -O$(OPT) -ggdb3 \
 	-mword-relocations -mlong-calls -fno-common
 LDFLAGS=-r -Bsymbolic -nostartfiles \
-	-mcpu=cortex-m3 -mthumb -mlong-calls -fno-common
+	-mcpu=cortex-m3 -mthumb -mlong-calls -fno-common \
+	-T elf.ld
 
 all: app.elf
 
 app.elf: $(OBJ)
 	$(LD) -o app.elf $(OBJ) $(LDFLAGS)
 	$(STRIP) -g -o app-striped.elf app.elf
+	$(SIZE) --common app.elf
 
 .PHONY: clean all list
 

@@ -17,3 +17,5 @@
 
 # Application
 elfloader
+app.elf.read
+app.elf.list
