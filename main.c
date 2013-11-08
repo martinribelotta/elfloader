@@ -447,13 +447,19 @@ int relocateSections(ELFExec_t *e) {
 }
 
 void jumpTo(ELFExec_t *e) {
-	Elf32_Sym sym;
-	if (findSymbol(e, "_start", &sym) == 0) {
-		Elf32_Addr eAddr = symbolAddress(&e->text, &sym);
-		entry_t *entry = (entry_t*) (eAddr | 1); /* FIX THUMB */
+	if (e->entry) {
+		entry_t *entry = (entry_t*) (e->text.data + e->entry);
 		entry(&sysentries);
-	} else
-		puts("_start not found");
+	} else {
+		Elf32_Sym sym;
+		puts("No entry defined. Find _start");
+		if (findSymbol(e, "_start", &sym) == 0) {
+			Elf32_Addr eAddr = symbolAddress(&e->text, &sym);
+			entry_t *entry = (entry_t*) (eAddr | 1); /* FIX THUMB */
+			entry(&sysentries);
+		} else
+			puts("_start not found");
+	}
 }
 
 void initSysent(void) {
