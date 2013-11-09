@@ -39,7 +39,9 @@ typedef struct {
 
 #define eq(s1, s2) (strcmp(s1, s2) == 0)
 
-int readSectionName(ELFExec_t *e, off_t off, char *buf, size_t max) {
+#undef SYMBOLS_DUMP
+
+static int readSectionName(ELFExec_t *e, off_t off, char *buf, size_t max) {
 	int ret = -1;
 	off_t offset = e->sectionTableStrings + off;
 	off_t old = ftell(e->f);
@@ -50,7 +52,7 @@ int readSectionName(ELFExec_t *e, off_t off, char *buf, size_t max) {
 	return ret;
 }
 
-int readSymbolName(ELFExec_t *e, off_t off, char *buf, size_t max) {
+static int readSymbolName(ELFExec_t *e, off_t off, char *buf, size_t max) {
 	int ret = -1;
 	off_t offset = e->symbolTableStrings + off;
 	off_t old = ftell(e->f);
@@ -65,19 +67,19 @@ void *elf_getMemory(size_t nbytes, size_t align) {
 	return (void*) memalign(align, nbytes);
 }
 
-void freeSection(ELFSection_t *s) {
+static void freeSection(ELFSection_t *s) {
 	if (s->data)
 		free(s->data);
 }
 
 static uint32_t swabo(uint32_t hl) {
-	return ((((hl) >> 24)) | //
-			(((hl) >> 8) & 0x0000ff00) | //
-			(((hl) << 8) & 0x00ff0000) | //
-			(((hl) << 24)));
+	return ((((hl) >> 24)) | /* */
+	(((hl) >> 8) & 0x0000ff00) | /* */
+	(((hl) << 8) & 0x00ff0000) | /* */
+	(((hl) << 24))); /* */
 }
 
-void dumpSection(ELFSection_t *s) {
+static void dumpSection(ELFSection_t *s) {
 	size_t i;
 	uint8_t *data = (uint8_t*) s->data;
 	i = 0;
@@ -90,7 +92,8 @@ void dumpSection(ELFSection_t *s) {
 	printf("\n");
 }
 
-int loadSecData(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s, const char *n) {
+static int loadSecData(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
+		const char *n) {
 	s->size = h->sh_size;
 	s->data = elf_getMemory(s->size, h->sh_addralign);
 	if (s->data) {
@@ -109,7 +112,26 @@ int loadSecData(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s, const char *n) {
 	return -1;
 }
 
-int readSymbol(ELFExec_t *e, int n, Elf32_Sym *sym, char *name, size_t nlen) {
+static int readSecHeader(ELFExec_t *e, off_t offset, Elf32_Shdr *h) {
+	if (fseek(e->f, offset, SEEK_SET) != 0)
+		return -1;
+	if (fread(h, 1, sizeof(Elf32_Shdr), e->f) != sizeof(Elf32_Shdr))
+		return -1;
+	else
+		return 0;
+}
+
+static int readSection(ELFExec_t *e, int n, Elf32_Shdr *h, char *name,
+		size_t nlen) {
+	if (readSecHeader(e, e->sectionTable + n * sizeof(Elf32_Shdr), h) != 0)
+		return -1;
+	if (h->sh_name)
+		return readSectionName(e, h->sh_name, name, nlen);
+	return 0;
+}
+
+static int readSymbol(ELFExec_t *e, int n, Elf32_Sym *sym, char *name,
+		size_t nlen) {
 	int ret = -1;
 	off_t old = ftell(e->f);
 	if (fseek(e->f, e->symbolTable + n * sizeof(Elf32_Sym), SEEK_SET) == 0)
@@ -125,20 +147,20 @@ int readSymbol(ELFExec_t *e, int n, Elf32_Sym *sym, char *name, size_t nlen) {
 	return ret;
 }
 
-const char *typeStr(int symt) {
+static const char *typeStr(int symt) {
 #define STRCASE(name) case name: return #name
 	switch (symt) {
 		STRCASE(R_ARM_NONE);
 		STRCASE(R_ARM_ABS32);
 		STRCASE(R_ARM_THM_CALL);
 		STRCASE(R_ARM_THM_JUMP24);
-	default:
+		default:
 		return "R_<unknow>";
 	}
 #undef STRCASE
 }
 
-void relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
+static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
 	switch (type) {
 	case R_ARM_ABS32:
 		*((uint32_t*) relAddr) += symAddr;
@@ -181,10 +203,12 @@ void relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
 		break;
 	default:
 		printf("Undefined relocation %d\n", type);
+		return -1;
 	}
+	return 0;
 }
 
-ELFSection_t *sectionOf(ELFExec_t *e, int index) {
+static ELFSection_t *sectionOf(ELFExec_t *e, int index) {
 #define IFSECTION(sec, i) do { \
 		if ((sec).index == i) \
 			return &(sec); \
@@ -197,11 +221,8 @@ ELFSection_t *sectionOf(ELFExec_t *e, int index) {
 	return NULL;
 }
 
-Elf32_Addr symbolAddress(ELFSection_t *sec, Elf32_Sym *sym) {
-	return (Elf32_Addr) (sec->data + sym->st_value);
-}
-
-int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s, const char *name) {
+static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
+		const char *name) {
 	printf("Relocating section %s\n", name);
 	if (s->data) {
 		Elf32_Rel rel;
@@ -233,9 +254,12 @@ int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s, const char *name) {
 								(void*) (relAddr | 1));
 						symAddr |= 1; /* thumb fix */
 					}
-					relocateSymbol(relAddr, relType, symAddr);
-				} else
+					if (relocateSymbol(relAddr, relType, symAddr) == -1)
+						return -1;
+				} else {
 					printf("No symbol address of %s\n", name);
+					return -1;
+				}
 			}
 		}
 		return 0;
@@ -244,41 +268,8 @@ int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s, const char *name) {
 	return -1;
 }
 
-int readSecHeader(ELFExec_t *e, off_t offset, Elf32_Shdr *h) {
-	if (fseek(e->f, offset, SEEK_SET) != 0)
-		return -1;
-	if (fread(h, 1, sizeof(Elf32_Shdr), e->f) != sizeof(Elf32_Shdr))
-		return -1;
-	else
-		return 0;
-}
-
-int readSection(ELFExec_t *e, int n, Elf32_Shdr *h, char *name, size_t nlen) {
-	if (readSecHeader(e, e->sectionTable + n * sizeof(Elf32_Shdr), h) != 0)
-		return -1;
-	if (h->sh_name)
-		return readSectionName(e, h->sh_name, name, nlen);
-	return 0;
-}
-
-int findSymbol(ELFExec_t *e, const char *sName, Elf32_Sym *sym) {
-	int i;
-	char name[33];
-	fseek(e->f, e->symbolTable, SEEK_SET);
-	for (i = 0; i < e->symbolCount; i++) {
-		if (fread(sym, 1, sizeof(Elf32_Sym), e->f) == sizeof(Elf32_Sym)) {
-			if (sym->st_name) {
-				readSymbolName(e, sym->st_name, name, sizeof(name));
-				if (eq(name, sName))
-					return 0;
-			}
-		} else
-			return -1;
-	}
-	return -1;
-}
-
-void dumpSymbols(ELFExec_t *e) {
+#ifdef SYMBOLS_DUMP
+static void dumpSymbols(ELFExec_t *e) {
 	int i;
 	fseek(e->f, e->symbolTable, SEEK_SET);
 	puts("  Num:   Value  Size shNdx Name");
@@ -291,6 +282,7 @@ void dumpSymbols(ELFExec_t *e) {
 				sym.st_shndx, name);
 	}
 }
+#endif
 
 #define IS_FLAGS_SET(v, m) ((v&m) == m)
 
@@ -306,21 +298,13 @@ typedef enum {
 	FoundRelData = (1 << 9),
 	FoundRelBss = (1 << 10),
 	FoundValid = FoundSymTab | FoundStrTab,
-	FoundExec =	FoundValid | FoundText,
-	FoundAll =
-			FoundSymTab |
-			FoundStrTab |
-			FoundText |
-			FoundRodata |
-			FoundData |
-			FoundBss |
-			FoundRelText |
-			FoundRelRodata |
-			FoundRelData |
-			FoundRelBss
+	FoundExec = FoundValid | FoundText,
+	FoundAll = FoundSymTab | FoundStrTab | FoundText | FoundRodata | FoundData
+			| FoundBss | FoundRelText | FoundRelRodata | FoundRelData
+			| FoundRelBss
 } FindFlags_t;
 
-int loadSymbols(ELFExec_t *e) {
+static int loadSymbols(ELFExec_t *e) {
 	int n;
 	int founded = 0;
 	puts("Scan ELF indexs...");
@@ -329,7 +313,10 @@ int loadSymbols(ELFExec_t *e) {
 		char name[33] = "<unamed>";
 		off_t offset = e->sectionTable + n * sizeof(Elf32_Shdr);
 
-		readSecHeader(e, offset, &sectHdr);
+		if (readSecHeader(e, offset, &sectHdr) != 0) {
+			puts("Error reading section");
+			return -1;
+		}
 		if (sectHdr.sh_name)
 			readSectionName(e, sectHdr.sh_name, name, sizeof(name));
 		printf("Examining section %d %s\n", n, name);
@@ -376,9 +363,12 @@ int loadSymbols(ELFExec_t *e) {
 	return founded;
 }
 
-int initElf(ELFExec_t *e, FILE *f) {
+static int initElf(ELFExec_t *e, FILE *f) {
 	Elf32_Ehdr h;
 	Elf32_Shdr sH;
+
+	if (!f)
+		return -1;
 
 	memset(e, 0, sizeof(ELFExec_t));
 
@@ -395,10 +385,12 @@ int initElf(ELFExec_t *e, FILE *f) {
 	e->sectionTable = h.e_shoff;
 	e->sectionTableStrings = sH.sh_offset;
 
+	/* TODO Check ELF validity */
+
 	return 0;
 }
 
-void freeElf(ELFExec_t *e) {
+static void freeElf(ELFExec_t *e) {
 	freeSection(&e->text);
 	freeSection(&e->rodata);
 	freeSection(&e->data);
@@ -406,7 +398,7 @@ void freeElf(ELFExec_t *e) {
 	fclose(e->f);
 }
 
-int loadSection(ELFExec_t *e, ELFSection_t *s, const char *name) {
+static int loadSection(ELFExec_t *e, ELFSection_t *s, const char *name) {
 	printf("Loading section %s\n", name);
 	if (s->index && s->fOff) {
 		Elf32_Shdr h;
@@ -419,46 +411,39 @@ int loadSection(ELFExec_t *e, ELFSection_t *s, const char *name) {
 	return -1;
 }
 
-int loadSections(ELFExec_t *e) {
-	loadSection(e, &e->text, ".text");
-	loadSection(e, &e->rodata, ".rodata");
-	loadSection(e, &e->data, ".data");
-	loadSection(e, &e->bss, ".bss");
-	return 0;
+static int loadSections(ELFExec_t *e) {
+	return loadSection(e, &e->text, ".text")
+			| loadSection(e, &e->rodata, ".rodata")
+			| loadSection(e, &e->data, ".data")
+			| loadSection(e, &e->bss, ".bss");
 }
 
-int relocateSection(ELFExec_t *e, ELFSection_t *s, const char *name) {
+static int relocateSection(ELFExec_t *e, ELFSection_t *s, const char *name) {
 	printf("Relocating section %s\n", name);
 	if (s->rOff) {
 		Elf32_Shdr sectHdr;
-		readSecHeader(e, s->rOff, &sectHdr);
-		relocate(e, &sectHdr, &e->text, name);
+		if (readSecHeader(e, s->rOff, &sectHdr) == 0)
+			return relocate(e, &sectHdr, &e->text, name);
 	} else
-		puts("No relocation index");
+		puts("No relocation index"); /* Not an error */
 	return 0;
 }
 
-int relocateSections(ELFExec_t *e) {
-	relocateSection(e, &e->text, ".text");
-	relocateSection(e, &e->rodata, ".rodata");
-	relocateSection(e, &e->data, ".data");
-	relocateSection(e, &e->bss, ".bss");
-	return 0;
+static int relocateSections(ELFExec_t *e) {
+	return relocateSection(e, &e->text, ".text")
+			| relocateSection(e, &e->rodata, ".rodata")
+			| relocateSection(e, &e->data, ".data")
+			| relocateSection(e, &e->bss, ".bss");
 }
 
-void jumpTo(ELFExec_t *e) {
+static int jumpTo(ELFExec_t *e) {
 	if (e->entry) {
 		entry_t *entry = (entry_t*) (e->text.data + e->entry);
 		entry(&sysentries);
+		return 0;
 	} else {
-		Elf32_Sym sym;
-		puts("No entry defined. Find _start");
-		if (findSymbol(e, "_start", &sym) == 0) {
-			Elf32_Addr eAddr = symbolAddress(&e->text, &sym);
-			entry_t *entry = (entry_t*) (eAddr | 1); /* FIX THUMB */
-			entry(&sysentries);
-		} else
-			puts("_start not found");
+		puts("No entry defined.");
+		return -1;
 	}
 }
 
@@ -473,23 +458,35 @@ void initSysent(void) {
 	sysentries.scanf = scanf;
 }
 
+int exec_elf(const char *path) {
+	ELFExec_t exec;
+	if (initElf(&exec, fopen(path, "rb")) != 0) {
+		printf("Invalid elf %s\n", path);
+		return -1;
+	}
+	if (IS_FLAGS_SET(loadSymbols(&exec), FoundValid)) {
+		int ret = -1;
+#ifdef SYMBOLS_DUMP
+		/* Dump symbols for debug purpose */
+		dumpSymbols(&exec);
+#endif
+		if (loadSections(&exec) == 0) {
+			if (relocateSections(&exec) == 0)
+				ret = jumpTo(&exec);
+		}
+		freeElf(&exec);
+		return ret;
+	} else {
+		puts("Invalid EXEC");
+		return -1;
+	}
+}
+
 #define APP_PATH "/home/martin/Proyectos/workspace2/elfloader/app/"
 #define APP_NAME "app-striped.elf"
 
 int main(void) {
-	ELFExec_t exec;
-	unsigned int idx;
 	initSysent();
-
-	initElf(&exec, fopen(APP_PATH APP_NAME, "rb"));
-	if (IS_FLAGS_SET(loadSymbols(&exec), FoundValid)) {
-		dumpSymbols(&exec);
-		loadSections(&exec);
-		relocateSections(&exec);
-		jumpTo(&exec);
-		freeElf(&exec);
-	} else
-		puts("Invalid EXEC");
-
+	exec_elf(APP_PATH APP_NAME);
 	puts("Done");
 }

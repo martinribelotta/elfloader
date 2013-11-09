@@ -1,7 +1,10 @@
 #include "sysent.h"
 
+volatile int i;
+
 void banner(void) {
-	syscalls->printf("Hola mundo el %s a las %s\n", __DATE__, __TIME__);
+	for(i=0; i<10; i++)
+		syscalls->printf("Hola mundo el %s a las %s %d veces\n", __DATE__, __TIME__, i);
 }
 
 int main(void) {
