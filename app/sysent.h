@@ -17,9 +17,9 @@ typedef struct {
 	int (*scanf)(const char *fmt, ...);
 } sysent_t;
 
-typedef void (entry_t)(sysent_t *sys);
+typedef void (entry_t)(void);
 
-extern sysent_t *syscalls;
+extern sysent_t syscalls;
 
 #ifdef __cplusplus
 }

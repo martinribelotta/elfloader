@@ -17,7 +17,10 @@ typedef struct {
 	off_t rOff;
 } ELFSection_t;
 
-static sysent_t sysentries;
+typedef struct {
+	const char *name;
+	void *ptr;
+} ELFSymbol_t;
 
 typedef struct {
 	FILE *f;
@@ -35,6 +38,8 @@ typedef struct {
 	ELFSection_t rodata;
 	ELFSection_t data;
 	ELFSection_t bss;
+
+	ELFSymbol_t *exported;
 } ELFExec_t;
 
 #define eq(s1, s2) (strcmp(s1, s2) == 0)
@@ -164,7 +169,7 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
 	switch (type) {
 	case R_ARM_ABS32:
 		*((uint32_t*) relAddr) += symAddr;
-		puts("R_ARM_ABS32 relocated");
+		printf("R_ARM_ABS32 relocated is 0x%08X\n", *((uint32_t*) relAddr));
 		break;
 	case R_ARM_THM_CALL:
 	case R_ARM_THM_JUMP24:
@@ -197,7 +202,8 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
 					| ((offset >> 1) & 0x07ff));
 			((uint16_t*) relAddr)[1] = lower_insn;
 
-			puts("R_ARM_THM_CALL/JMP relocated");
+			printf("R_ARM_THM_CALL/JMP relocated is 0x%08X\n",
+					*((uint32_t*)relAddr));
 
 		} while (0);
 		break;
@@ -209,7 +215,8 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
 }
 
 static ELFSection_t *sectionOf(ELFExec_t *e, int index) {
-#define IFSECTION(sec, i) do { \
+#define IFSECTION(sec, i) \
+	do { \
 		if ((sec).index == i) \
 			return &(sec); \
 	} while(0)
@@ -219,6 +226,21 @@ static ELFSection_t *sectionOf(ELFExec_t *e, int index) {
 	IFSECTION(e->bss, index);
 #undef IFSECTION
 	return NULL;
+}
+
+static Elf32_Addr addressOf(ELFExec_t *e, Elf32_Sym *sym, const char *sName) {
+	if (sym->st_shndx == SHN_UNDEF) {
+		ELFSymbol_t *expSym;
+		for (expSym = e->exported; expSym->ptr != NULL; expSym++)
+			if (eq(expSym->name, sName))
+				return (Elf32_Addr) expSym->ptr;
+	} else {
+		ELFSection_t *symSec = sectionOf(e, sym->st_shndx);
+		if (symSec)
+			return ((Elf32_Addr) symSec->data) + sym->st_value;
+	}
+	printf("Can not find address for symbol %s\n", sName);
+	return 0xffffffff;
 }
 
 static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
@@ -233,27 +255,20 @@ static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
 		for (relCount = 0; relCount < relEntries; relCount++) {
 			if (fread(&rel, 1, sizeof(rel), e->f) == sizeof(rel)) {
 				Elf32_Sym sym;
-				ELFSection_t *symSec;
+				Elf32_Addr symAddr;
 
 				char name[33] = "<unnamed>";
 				int symEntry = ELF32_R_SYM(rel.r_info);
 				int relType = ELF32_R_TYPE(rel.r_info);
+				Elf32_Addr relAddr = ((Elf32_Addr) s->data) + rel.r_offset;
 
 				readSymbol(e, symEntry, &sym, name, sizeof(name));
 				printf(" %08X %08X %-16s %s\n", rel.r_offset, rel.r_info,
 						typeStr(relType), name);
 
-				symSec = sectionOf(e, sym.st_shndx);
-				if (symSec) {
-					Elf32_Addr symAddr = ((Elf32_Addr) symSec->data)
-							+ sym.st_value;
-					Elf32_Addr relAddr = ((Elf32_Addr) s->data) + rel.r_offset;
+				symAddr = addressOf(e, &sym, name);
+				if (symAddr != 0xffffffff) {
 					printf(" symAddr=%08X relAddr=%08X\n", symAddr, relAddr);
-					if (symSec->index == e->text.index) {
-						printf("Fixing thumb addr %p to %p\n", (void*) relAddr,
-								(void*) (relAddr | 1));
-						symAddr |= 1; /* thumb fix */
-					}
 					if (relocateSymbol(relAddr, relType, symAddr) == -1)
 						return -1;
 				} else {
@@ -308,7 +323,7 @@ static int loadSymbols(ELFExec_t *e) {
 	int n;
 	int founded = 0;
 	puts("Scan ELF indexs...");
-	for (n = 0; n < e->sections; n++) {
+	for (n = 1; n < e->sections; n++) {
 		Elf32_Shdr sectHdr;
 		char name[33] = "<unamed>";
 		off_t offset = e->sectionTable + n * sizeof(Elf32_Shdr);
@@ -439,7 +454,7 @@ static int relocateSections(ELFExec_t *e) {
 static int jumpTo(ELFExec_t *e) {
 	if (e->entry) {
 		entry_t *entry = (entry_t*) (e->text.data + e->entry);
-		entry(&sysentries);
+		entry();
 		return 0;
 	} else {
 		puts("No entry defined.");
@@ -447,23 +462,13 @@ static int jumpTo(ELFExec_t *e) {
 	}
 }
 
-void initSysent(void) {
-	int open(const char *path, int mode, ...);
-
-	sysentries.open = open;
-	sysentries.close = close;
-	sysentries.write = write;
-	sysentries.read = read;
-	sysentries.printf = printf;
-	sysentries.scanf = scanf;
-}
-
-int exec_elf(const char *path) {
+int exec_elf(const char *path, ELFSymbol_t *exported) {
 	ELFExec_t exec;
 	if (initElf(&exec, fopen(path, "rb")) != 0) {
 		printf("Invalid elf %s\n", path);
 		return -1;
 	}
+	exec.exported = exported;
 	if (IS_FLAGS_SET(loadSymbols(&exec), FoundValid)) {
 		int ret = -1;
 #ifdef SYMBOLS_DUMP
@@ -485,8 +490,24 @@ int exec_elf(const char *path) {
 #define APP_PATH "/home/martin/Proyectos/workspace2/elfloader/app/"
 #define APP_NAME "app-striped.elf"
 
+extern int open(const char *path, int mode, ...);
+
+static sysent_t sysentries = { /* */
+/* */
+open, /* */
+close, /* */
+write, /* */
+read, /* */
+printf, /* */
+scanf /* */
+};
+
+static ELFSymbol_t exported_symbols[] = { /* */
+{ "syscalls", &sysentries }, /* */
+{ NULL, NULL } /* */
+};
+
 int main(void) {
-	initSysent();
-	exec_elf(APP_PATH APP_NAME);
+	exec_elf(APP_PATH APP_NAME, exported_symbols);
 	puts("Done");
 }
