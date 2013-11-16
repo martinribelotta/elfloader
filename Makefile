@@ -1,4 +1,4 @@
-SRC=main.c arm/fault.c
+SRC=main.c loader.c arm/fault.c
 ASRC=arm/startup_ARMCM4.S
 OBJ=$(SRC:.c=.o) $(ASRC:.S=.o)
 
@@ -11,7 +11,7 @@ LD=$(CROSS)gcc
 
 CFLAGS=-O0 -ggdb3 -mcpu=cortex-m4 -mthumb \
 	-flto -ffunction-sections -fdata-sections \
-	-Iarm/CMSIS/include
+	-Iarm/CMSIS/include -I.
 
 %.o: %.S
 	$(AS) -c $(CFLAGS) -o $@ $^
