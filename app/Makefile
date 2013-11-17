@@ -5,27 +5,40 @@ STRIP=$(CROSS)strip
 SIZE=$(CROSS)size
 
 SRC=main.c start.c
-OBJ=$(SRC:.c=.o)
 
 OPT?=0
+
 CFLAGS=-mcpu=cortex-m3 -mthumb -O$(OPT) -ggdb3 \
 	-mword-relocations -mlong-calls -fno-common
+
 LDFLAGS=-r -Bsymbolic -nostartfiles \
 	-mcpu=cortex-m3 -mthumb -mlong-calls -fno-common \
 	-T elf.ld
 
+OBJS=$(SRC:.c=.o)
+DEPS=$(SRC:.c=.d)
+
 all: app.elf
 
-app.elf: $(OBJ)
-	$(LD) -o app.elf $(OBJ) $(LDFLAGS)
-	$(STRIP) -g -o app-striped.elf app.elf
-	$(SIZE) --common app.elf
+-include $(DEPS)
+
+%.o: %.c
+	@echo " CC $<"
+	@$(CC) -MMD $(CFLAGS) -o $@ -c $<
+
+app.elf: $(OBJS)
+	@echo " LINK $@"
+	@$(LD) $(LDFLAGS) -o $@ $^
+	@$(STRIP) -g -o app-striped.elf $@
+	@$(SIZE) --common $@
 
 .PHONY: clean all list
 
 clean:
-	@rm -fR *.o *.elf
+	@echo " CLEAN"
+	@rm -fR $(OBJS) $(DEPS) *.elf
 
 list:
-	arm-none-eabi-objdump -hpxdSsrt app.elf > app.elf.list
-	arm-none-eabi-readelf -atSln app.elf > app.elf.read
+	@echo " Creating list..."
+	@$(CROSS)objdump -hpxdSsrt app.elf > app.elf.list
+	@$(CROSS)readelf -atSln app.elf > app.elf.read
