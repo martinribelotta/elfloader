@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdio.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus__
 extern "C" {
@@ -21,26 +21,6 @@ typedef struct {
   const char *name;
   void *ptr;
 } ELFSymbol_t;
-
-typedef struct {
-  FILE *f;
-
-  size_t sections;
-  off_t sectionTable;
-  off_t sectionTableStrings;
-
-  size_t symbolCount;
-  off_t symbolTable;
-  off_t symbolTableStrings;
-  off_t entry;
-
-  ELFSection_t text;
-  ELFSection_t rodata;
-  ELFSection_t data;
-  ELFSection_t bss;
-
-  ELFSymbol_t *exported;
-} ELFExec_t;
 
 extern int exec_elf(const char *path, ELFSymbol_t *exported);
 
