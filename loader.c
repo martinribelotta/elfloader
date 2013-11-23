@@ -52,7 +52,7 @@ static int readSectionName(ELFExec_t *e, off_t off, char *buf, size_t max) {
   if (LOADER_SEEK_FROM_START(e->fd, offset) == 0)
     if (LOADER_READ(e->fd, buf, max) == 0)
       ret = 0;
-  LOADER_SEEK_FROM_START(e->fd, old);
+  (void) LOADER_SEEK_FROM_START(e->fd, old);
   return ret;
 }
 
@@ -63,7 +63,7 @@ static int readSymbolName(ELFExec_t *e, off_t off, char *buf, size_t max) {
   if (LOADER_SEEK_FROM_START(e->fd, offset) == 0)
     if (LOADER_READ(e->fd, buf, max) == 0)
       ret = 0;
-  LOADER_SEEK_FROM_START(e->fd, old);
+  (void) LOADER_SEEK_FROM_START(e->fd, old);
   return ret;
 }
 
@@ -143,7 +143,7 @@ static int readSymbol(ELFExec_t *e, int n, Elf32_Sym *sym, char *name,
         ret = readSection(e, sym->st_shndx, &shdr, name, nlen);
       }
     }
-  LOADER_SEEK_FROM_START(e->fd, old);
+  (void) LOADER_SEEK_FROM_START(e->fd, old);
   return ret;
 }
 
@@ -243,7 +243,7 @@ static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
     Elf32_Rel rel;
     size_t relEntries = h->sh_size / sizeof(rel);
     size_t relCount;
-    LOADER_SEEK_FROM_START(e->fd, h->sh_offset);
+    (void) LOADER_SEEK_FROM_START(e->fd, h->sh_offset);
     DBG(" Offset   Info     Type             Name\n");
     for (relCount = 0; relCount < relEntries; relCount++) {
       if (LOADER_READ(e->fd, &rel, sizeof(rel)) == sizeof(rel)) {
