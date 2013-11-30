@@ -9,7 +9,7 @@
 
 extern int open(const char *path, int mode, ...);
 
-static sysent_t sysentries = { /* */
+static const sysent_t sysentries = { /* */
 open, /* */
 close, /* */
 write, /* */
@@ -18,12 +18,15 @@ printf, /* */
 scanf /* */
 };
 
-static ELFSymbol_t exporteds[] = { /* */
-{"syscalls", &sysentries}, /* */
-{NULL, NULL} /* */
+static const ELFSymbol_t exporteds[] = { {"syscalls", (void*) &sysentries}};
+
+static const ELFEnv_t env = { /* */
+2048, /* */
+exporteds, /* */
+sizeof(exporteds) / sizeof(*exporteds) /* */
 };
 
 int main(void) {
-  exec_elf(APP_PATH APP_NAME, exporteds);
+  exec_elf(APP_PATH APP_NAME, &env);
   puts("Done");
 }

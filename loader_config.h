@@ -29,13 +29,14 @@
 #define LOADER_TELL(fd) lseek(fd, 0, SEEK_CUR)
 #endif
 
-#define LOADER_ALIGN_ALLOC(size, align) ((void*) memalign(align, size))
+#define LOADER_ALIGN_ALLOC(size, align, perm) ((void*) memalign(align, size))
+
 #define LOADER_FREE(ptr) free(ptr)
 #define LOADER_CLEAR(ptr, size) memset(ptr, 0, size)
 #define LOADER_STREQ(s1, s2) (strcmp(s1, s2) == 0)
 
 #define DBG(...) printf(__VA_ARGS__)
-#define ERR(msg) perror(msg)
+#define ERR(msg) do { perror(msg); __asm__ volatile ("bkpt"); } while(0)
 #define MSG(msg) puts(msg)
 
 #endif /* LOADER_CONFIG_H_ */
