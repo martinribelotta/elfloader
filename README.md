@@ -35,17 +35,20 @@ An example of application is found in the __app__ folder
 The API is simple, call to exec_elf(path, exported symbol table) function and
 enjoying.
 
-    int exec_elf(const char *path, ELFSymbol_t *exported);
+    extern int exec_elf(const char *path, const ELFEnv_t *env);
 
-This function take a path to a file, and ELFSymbol_t array (zero terminated)
-for find, open, relocate and finally jump to executable code. 
+This function take a path to a file, and ELFEnv_t is a struct containing:
 
-The caller of this function is called "Host" and the code called over this
-function is called "Guest".
+	typedef struct {
+	  size_t stack_size;
+	  const ELFSymbol_t *exported;
+	  size_t exported_size;
+	} ELFEnv_t;
 
-The path is fopen valid path. In this example, semihosting library is used to
-provide filesystem mechanism but can be replaced for your system calls.
+ - Stack size of the thread
+ - exported symbols to resolve in executable
+ - size of exported symbol array in elements number
 
-The parameter "exported" is a pointer to an array of zero-terminated
-ELFSymbol_t containing the symbols exported by the host over the guest.
-These symbols are used to solve the undefined links in the guest
+### Loader config
+
+TODO 

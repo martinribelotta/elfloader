@@ -4,7 +4,7 @@
 #include "loader.h"
 #include "app/sysent.h"
 
-#define APP_PATH "/home/martin/Proyectos/workspace2/elfloader/app/"
+#define APP_PATH
 #define APP_NAME "app-striped.elf"
 
 extern int open(const char *path, int mode, ...);
