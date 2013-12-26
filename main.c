@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "loader.h"
 #include "app/sysent.h"
 
 #define APP_PATH
 #define APP_NAME "app-striped.elf"
-#define STACK_SIZE 2048
+#define APP_STACK_SIZE 2048
 
 extern int open(const char *path, int mode, ...);
 
@@ -19,12 +20,9 @@ printf, /* */
 scanf /* */
 };
 
-static const ELFSymbol_t exporteds[] = { {"syscalls", (void*) &sysentries}};
+static const ELFSymbol_t exports[] = { { "syscalls", (void*) &sysentries } };
 
-static const ELFEnv_t env = { /* */
-exporteds, /* */
-sizeof(exporteds) / sizeof(*exporteds) /* */
-};
+static const ELFEnv_t env = { exports, sizeof(exports) / sizeof(*exports) };
 
 int main(void) {
   exec_elf(APP_PATH APP_NAME, &env);
@@ -32,17 +30,26 @@ int main(void) {
 }
 
 void arch_jumpTo(entry_t entry) {
-	void *stack = malloc(STACK_SIZE);
-	if (stack) {
-		register uint32_t saved;
-		void *tos = stack + STACK_SIZE;
-		__asm__ volatile("MOV %0, sp\n\t" : : "r" (saved)); /* s->saved */
-		__asm__ volatile("MOV sp, %0\n\t" : : "r" (tos)); /* tos->MSP */
-		__asm__ volatile("PUSH {%0}\n\t" : : "r" (saved)); /* push saved */
-		entry();
-		__asm__ volatile("POP {%0}\n\t" : : "r" (saved)); /* pop saved */
-		__asm__ volatile("MOV sp, %0\n\t" : : "r" (saved)); /* saved->sp */
-		free(stack);
-	} else
-		perror("Stack alloc");
+  void *stack = malloc(APP_STACK_SIZE);
+  if (stack) {
+    register uint32_t saved;
+    void *tos = stack + APP_STACK_SIZE;
+
+    /* s->saved */
+    __asm__ volatile("MOV %0, sp\n\t" : : "r" (saved));
+    /* tos->MSP */
+    __asm__ volatile("MOV sp, %0\n\t" : : "r" (tos));
+    /* push saved */
+    __asm__ volatile("PUSH {%0}\n\t" : : "r" (saved));
+
+    entry();
+
+    /* pop saved */
+    __asm__ volatile("POP {%0}\n\t" : : "r" (saved));
+    /* saved->sp */
+    __asm__ volatile("MOV sp, %0\n\t" : : "r" (saved));
+
+    free(stack);
+  } else
+    perror("Stack alloc");
 }
