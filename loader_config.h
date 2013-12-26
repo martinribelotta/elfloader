@@ -35,6 +35,15 @@
 #define LOADER_CLEAR(ptr, size) memset(ptr, 0, size)
 #define LOADER_STREQ(s1, s2) (strcmp(s1, s2) == 0)
 
+#if 0
+#define LOADER_JUMP_TO(entry) entry();
+#else
+
+extern void arch_jumpTo(entry_t entry);
+
+#define LOADER_JUMP_TO(entry) arch_jumpTo(entry)
+#endif
+
 #define DBG(...) printf(__VA_ARGS__)
 #define ERR(msg) do { perror(msg); __asm__ volatile ("bkpt"); } while(0)
 #define MSG(msg) puts(msg)

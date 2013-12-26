@@ -40,12 +40,10 @@ enjoying.
 This function take a path to a file, and ELFEnv_t is a struct containing:
 
 	typedef struct {
-	  size_t stack_size;
 	  const ELFSymbol_t *exported;
 	  size_t exported_size;
 	} ELFEnv_t;
 
- - Stack size of the thread
  - exported symbols to resolve in executable
  - size of exported symbol array in elements number
 

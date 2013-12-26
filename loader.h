@@ -27,7 +27,6 @@ typedef struct {
 } ELFSymbol_t;
 
 typedef struct {
-  size_t stack_size;
   const ELFSymbol_t *exported;
   size_t exported_size;
 } ELFEnv_t;
