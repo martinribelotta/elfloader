@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <malloc.h>
 
 #include "loader.h"
 #include "app/sysent.h"
@@ -21,7 +22,6 @@ scanf /* */
 };
 
 static const ELFSymbol_t exports[] = { { "syscalls", (void*) &sysentries } };
-
 static const ELFEnv_t env = { exports, sizeof(exports) / sizeof(*exports) };
 
 int main(void) {
@@ -29,8 +29,14 @@ int main(void) {
   puts("Done");
 }
 
+void *do_alloc(size_t size, size_t align, ELFSecPerm_t perm) {
+  (void) perm;
+  /* TODO Change perms with MPU */
+  return memalign(align, size);
+}
+
 void arch_jumpTo(entry_t entry) {
-  void *stack = malloc(APP_STACK_SIZE);
+  void *stack = do_alloc(APP_STACK_SIZE, 8, ELF_SEC_READ | ELF_SEC_WRITE);
   if (stack) {
     register uint32_t saved;
     void *tos = stack + APP_STACK_SIZE;

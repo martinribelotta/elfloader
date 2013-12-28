@@ -29,7 +29,15 @@
 #define LOADER_TELL(fd) lseek(fd, 0, SEEK_CUR)
 #endif
 
+#if 0
 #define LOADER_ALIGN_ALLOC(size, align, perm) ((void*) memalign(align, size))
+#else
+
+extern void *do_alloc(size_t size, size_t align, ELFSecPerm_t perm);
+
+#define LOADER_ALIGN_ALLOC(size, align, perm) do_alloc(size, align, perm)
+
+#endif
 
 #define LOADER_FREE(ptr) free(ptr)
 #define LOADER_CLEAR(ptr, size) memset(ptr, 0, size)

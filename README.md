@@ -48,5 +48,23 @@ This function take a path to a file, and ELFEnv_t is a struct containing:
  - size of exported symbol array in elements number
 
 ### Loader config
-
-TODO 
+ - File handling macros
+  - LOADER_FD_T File descriptor type
+  - LOADER_OPEN_FOR_RD(path) Function to open file for read
+  - LOADER_FD_VALID(fd) Validity evaluation of file descriptor
+  - LOADER_READ(fd, buffer, size) Function to read buffer from fd
+  - LOADER_WRITE(fd, buffer, size) Function to write buffer to fd
+  - LOADER_CLOSE(fd) Function to close file descriptor
+  - LOADER_SEEK_FROM_START(fd, off) Seek function over fd
+  - LOADER_TELL(fd) Tell position of fd cursor
+ - Memory manager/access
+  - LOADER_ALIGN_ALLOC(size, align, perm) Aligned malloc function macro
+  - LOADER_FREE(ptr) Free memory function
+  - LOADER_CLEAR(ptr, size) Memory clearance (to 0) function
+  - LOADER_STREQ(s1, s2) String compare function (return !=0 if s1==s2)
+ - Code execution
+  - LOADER_JUMP_TO(entry) Macro for jump to "entry" pointer (entry_t)
+ - Debug/message
+  - DBG(...) printf style macro for debug
+  - ERR(msg) puts style macro used on severe error
+  - MSG(msg) puts style macro used on info/warning
