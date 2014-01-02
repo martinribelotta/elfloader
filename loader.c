@@ -18,8 +18,7 @@
  *****************************************************************************/
 
 #include "loader.h"
-#include "elf32.h"
-#include "arm/elf.h"
+#include "elf.h"
 #include "app/sysent.h"
 #include "loader_config.h"
 
@@ -186,7 +185,7 @@ static const char *typeStr(int symt) {
   switch (symt) {
   STRCASE(R_ARM_NONE)
   STRCASE(R_ARM_ABS32)
-  STRCASE(R_ARM_THM_CALL)
+  STRCASE(R_ARM_THM_PC22)
   STRCASE(R_ARM_THM_JUMP24)
   default:
     return "R_<unknow>";
@@ -229,7 +228,7 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
     *((uint32_t*) relAddr) += symAddr;
     DBG("R_ARM_ABS32 relocated is 0x%08X\n", *((uint32_t* )relAddr));
     break;
-  case R_ARM_THM_CALL:
+  case R_ARM_THM_PC22:
   case R_ARM_THM_JUMP24:
     relJmpCall(relAddr, type, symAddr);
     DBG("R_ARM_THM_CALL/JMP relocated is 0x%08X\n", *((uint32_t* )relAddr));
