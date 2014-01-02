@@ -38,6 +38,7 @@
 
 #ifndef __INCLUDE_ELF32_H
 #define __INCLUDE_ELF32_H
+#ifndef DOX
 
 /****************************************************************************
  * Included Files
@@ -339,4 +340,5 @@ typedef struct {
 
 //extern Elf32_Dyn _DYNAMIC[] ;
 
+#endif /* DOX */
 #endif /* __INCLUDE_ELF32_H */

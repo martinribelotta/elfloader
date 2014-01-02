@@ -1,13 +1,32 @@
+/****************************************************************************
+ *  ARMv7M ELF loader
+ *  Copyright (C) 2013  Martin Ribelotta
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *****************************************************************************/
+
 #include "loader.h"
 #include "elf32.h"
 #include "arm/elf.h"
 #include "app/sysent.h"
 #include "loader_config.h"
 
-#undef SYMBOLS_DUMP
-
 #define IS_FLAGS_SET(v, m) ((v&m) == m)
 #define SECTION_OFFSET(e, n) (e->sectionTable + n * sizeof(Elf32_Shdr))
+
+#ifndef DOX
 
 typedef struct {
   void *data;
@@ -36,6 +55,8 @@ typedef struct {
 
   const ELFEnv_t *env;
 } ELFExec_t;
+
+#endif
 
 typedef enum {
   FoundERROR = 0,

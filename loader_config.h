@@ -1,3 +1,22 @@
+/****************************************************************************
+ *  ARMv7M ELF loader
+ *  Copyright (C) 2013  Martin Ribelotta
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *****************************************************************************/
+
 #ifndef LOADER_CONFIG_H_
 #define LOADER_CONFIG_H_
 
@@ -8,6 +27,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#ifndef DOX
 
 #if 0
 #define LOADER_FD_T FILE *
@@ -50,10 +71,177 @@ extern void *do_alloc(size_t size, size_t align, ELFSecPerm_t perm);
 extern void arch_jumpTo(entry_t entry);
 
 #define LOADER_JUMP_TO(entry) arch_jumpTo(entry)
+
 #endif
 
 #define DBG(...) printf(__VA_ARGS__)
 #define ERR(msg) do { perror(msg); __asm__ volatile ("bkpt"); } while(0)
 #define MSG(msg) puts(msg)
+
+#else
+
+/**
+ * @defgroup Configuration Configuration macros
+ *
+ * This macros defines the access function to various internal function of
+ * elf loader
+ *
+ * You need to define this macros to compile and use the elf loader library
+ * in your system
+ *
+ * @{
+ */
+
+/**
+ * File handler descriptor type macro
+ *
+ * This define the file handler declaration type
+ */
+#define LOADER_FD_T
+
+/**
+ * Open for read function macro
+ *
+ * This macro define the function name and convention call to open file for
+ * read. This need to return #LOADER_FD_T type
+ *
+ * @param path Path to file for open
+ */
+#define LOADER_OPEN_FOR_RD(path)
+
+/**
+ * Macro for check file descriptor validity
+ *
+ * This macro is used for check the validity of #LOADER_FD_T after open
+ * operation
+ *
+ * @param fd File descriptor object
+ * @retval Zero if fd is unusable
+ * @retval Non-zero if fd is usable
+ */
+#define LOADER_FD_VALID(fd)
+
+/**
+ * Macro for read buffer from file
+ *
+ * This macro is used when need read a block for the #LOADER_FD_T previous
+ * opened.
+ * @param fd File descriptor
+ * @param buffer Writable buffer to store read data
+ * @param size Number of bytes to read
+ */
+#define LOADER_READ(fd, buffer, size)
+
+/**
+ * Close file macro
+ *
+ * Close a file descriptor previously opened with LOADER_OPEN_FOR_RD
+ *
+ * @param fd File descriptor to close
+ */
+#define LOADER_CLOSE(fd)
+
+/**
+ * Seek read cursor of file
+ *
+ * Seek read cursor from begin of file
+ *
+ * @param fd File descriptor
+ * @param off Offset from begin of file
+ */
+#define LOADER_SEEK_FROM_START(fd, off)
+
+/**
+ * Tell cursor of file
+ *
+ * Tell current read cursor of file
+ *
+ * @param fd File descriptor
+ * @return The current read cursor position
+ */
+#define LOADER_TELL(fd)
+
+/**
+ * Allocate memory service
+ *
+ * Allocate aligned memory with required right access
+ *
+ * @param size Size in bytes to allocate
+ * @param align Aligned size in bytes
+ * @param perm Access rights of allocated block. Mask of #ELFSecPerm_t values
+ * @return Void pointer to allocated memory or NULL on fail
+ */
+#define LOADER_ALIGN_ALLOC(size, align, perm)
+
+/**
+ * Free memory
+ *
+ * Free memory allocated with #LOADER_ALIGN_ALLOC
+ *
+ * @param ptr Pointer to allocated memory to free
+ */
+#define LOADER_FREE(ptr)
+
+/**
+ * Clear memory block
+ *
+ * Set to zero memory block
+ *
+ * @param ptr Pointer to memory
+ * @param size Bytes to clear
+ */
+#define LOADER_CLEAR(ptr, size)
+
+/**
+ * Compare string
+ *
+ * Compare zero terminated C-strings
+ *
+ * @param s1 First string
+ * @param s2 Second string
+ * @retval Zero if non equals
+ * @retval Non-zero if s1==s2
+ */
+#define LOADER_STREQ(s1, s2)
+
+/**
+ * Jump to code
+ *
+ * Execute loaded code from entry point
+ *
+ * @param entry Pointer to function code to execute
+ */
+#define LOADER_JUMP_TO(entry)
+
+/**
+ * Debug macro
+ *
+ * This macro is used for trace code execution and not side effect is needed
+ *
+ * @param ... printf style format and variadic argument list
+ */
+#define DBG(...)
+
+/**
+ * Error macro
+ *
+ * This macro is used on unrecoverable error message
+ *
+ * @param msg C string printable text
+ */
+#define ERR(msg)
+
+/**
+ * Information/Warnings message macro
+ *
+ * This macro is used on information or recoverable warnings mesages
+ *
+ * @param msg C string printable text
+ */
+#define MSG(msg)
+
+/** @} */
+
+#endif
 
 #endif /* LOADER_CONFIG_H_ */

@@ -21,3 +21,4 @@ elfloader
 app.elf.read
 app.elf.list
 oocd.log
+doc/html
