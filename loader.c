@@ -110,6 +110,7 @@ static uint32_t swabo(uint32_t hl) {
 }
 
 static void dumpData(uint8_t *data, size_t size) {
+#if 0
   int i = 0;
   while (i < size) {
     if ((i & 0xf) == 0)
@@ -118,6 +119,7 @@ static void dumpData(uint8_t *data, size_t size) {
     i += sizeof(uint32_t);
   }
   DBG("\n");
+#endif
 }
 
 static int loadSecData(ELFExec_t *e, ELFSection_t *s, Elf32_Shdr *h) {
@@ -346,10 +348,14 @@ int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
   } else if (LOADER_STREQ(name, ".rel.data")) {
     e->data.relSecIdx = n;
     return FoundRelText;
-  } else if (LOADER_STREQ(name, ".rel.bss")) {
+  }
+  /* BSS not need relocation */
+#if 0
+  else if (LOADER_STREQ(name, ".rel.bss")) {
     e->bss.relSecIdx = n;
     return FoundRelText;
   }
+#endif
   return 0;
 }
 
@@ -417,7 +423,7 @@ static int relocateSection(ELFExec_t *e, ELFSection_t *s, const char *name) {
   if (s->relSecIdx) {
     Elf32_Shdr sectHdr;
     if (readSecHeader(e, s->relSecIdx, &sectHdr) == 0)
-      return relocate(e, &sectHdr, &e->text, name);
+      return relocate(e, &sectHdr, s, name);
     else {
       ERR("Error reading section header");
       return -1;
@@ -431,7 +437,11 @@ static int relocateSections(ELFExec_t *e) {
   return relocateSection(e, &e->text, ".text")
       | relocateSection(e, &e->rodata, ".rodata")
       | relocateSection(e, &e->data, ".data")
-      | relocateSection(e, &e->bss, ".bss");
+      /* BSS not need relocation */
+#if 0
+      | relocateSection(e, &e->bss, ".bss")
+#endif
+  ;
 }
 
 static int jumpTo(ELFExec_t *e) {
