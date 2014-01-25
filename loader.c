@@ -141,7 +141,7 @@ static int loadSecData(ELFExec_t *e, ELFSection_t *s, Elf32_Shdr *h) {
     ERR("     read data fail");
     return -1;
   }
-  DBG("DATA: ");
+  /* DBG("DATA: "); */
   dumpData(s->data, h->sh_size);
   return 0;
 }
@@ -228,15 +228,15 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
   switch (type) {
   case R_ARM_ABS32:
     *((uint32_t*) relAddr) += symAddr;
-    DBG("R_ARM_ABS32 relocated is 0x%08X\n", *((uint32_t* )relAddr));
+    DBG("  R_ARM_ABS32 relocated is 0x%08X\n", *((uint32_t* )relAddr));
     break;
   case R_ARM_THM_PC22:
   case R_ARM_THM_JUMP24:
     relJmpCall(relAddr, type, symAddr);
-    DBG("R_ARM_THM_CALL/JMP relocated is 0x%08X\n", *((uint32_t* )relAddr));
+    DBG("  R_ARM_THM_CALL/JMP relocated is 0x%08X\n", *((uint32_t* )relAddr));
     break;
   default:
-    DBG("Undefined relocation %d\n", type);
+    DBG("  Undefined relocation %d\n", type);
     return -1;
   }
   return 0;
@@ -267,13 +267,12 @@ static Elf32_Addr addressOf(ELFExec_t *e, Elf32_Sym *sym, const char *sName) {
     if (symSec)
       return ((Elf32_Addr) symSec->data) + sym->st_value;
   }
-  DBG("Can not find address for symbol %s\n", sName);
+  DBG("  Can not find address for symbol %s\n", sName);
   return 0xffffffff;
 }
 
 static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
     const char *name) {
-  DBG("Relocating section %s\n", name);
   if (s->data) {
     Elf32_Rel rel;
     size_t relEntries = h->sh_size / sizeof(rel);
@@ -296,11 +295,11 @@ static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
 
         symAddr = addressOf(e, &sym, name);
         if (symAddr != 0xffffffff) {
-          DBG(" symAddr=%08X relAddr=%08X\n", symAddr, relAddr);
+          DBG("  symAddr=%08X relAddr=%08X\n", symAddr, relAddr);
           if (relocateSymbol(relAddr, relType, symAddr) == -1)
             return -1;
         } else {
-          DBG("No symbol address of %s\n", name);
+          DBG("  No symbol address of %s\n", name);
           return -1;
         }
       }
