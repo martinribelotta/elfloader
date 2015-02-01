@@ -8,7 +8,7 @@ CC=$(CROSS)gcc
 AS=$(CROSS)gcc
 LD=$(CROSS)gcc
 
-CFLAGS=-O0 -ggdb3 -mcpu=cortex-m4 -mthumb \
+CFLAGS=-O0 -ggdb3 -mcpu=cortex-m3 -mthumb \
 	-flto -ffunction-sections -fdata-sections \
 	-Iarm/CMSIS/include -I.
 

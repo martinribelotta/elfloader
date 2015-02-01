@@ -27,7 +27,7 @@
 
 #define APP_PATH
 #define APP_NAME "app-striped.elf"
-#define APP_STACK_SIZE 2048
+#define APP_STACK_SIZE 1048
 
 extern int open(const char *path, int mode, ...);
 
@@ -55,6 +55,9 @@ void *do_alloc(size_t size, size_t align, ELFSecPerm_t perm) {
 }
 
 void arch_jumpTo(entry_t entry) {
+#if 1
+  entry();
+#else
   void *stack = do_alloc(APP_STACK_SIZE, 8, ELF_SEC_READ | ELF_SEC_WRITE);
   if (stack) {
     register uint32_t saved;
@@ -77,4 +80,15 @@ void arch_jumpTo(entry_t entry) {
     free(stack);
   } else
     perror("Stack alloc");
+#endif
+}
+
+int is_streq(const char *s1, const char *s2) {
+	while(*s1 && *s2) {
+		if (*s1 != *s2)
+			return 0;
+		s1++;
+		s2++;
+	}
+	return *s1 == *s2;
 }
