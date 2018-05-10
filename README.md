@@ -47,8 +47,8 @@ This function take a path to a file, and ELFEnv_t is a struct containing:
 	} ELFEnv_t;
 ```
 
- - exported symbols to resolve in executable
- - size of exported symbol array in elements number
+ - `exported`: Array of symbols to resolve in executable. `ELFSymbol_t` is a struct contains `const char *name` for C-String symbol name and `void *ptr` pointer to memory related to symbol (entry point of function, variable address, etc)
+ - `size`: Size of exported symbol array in elements number
 
 ### Loader config
 ##### File handling macros
