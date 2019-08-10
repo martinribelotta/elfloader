@@ -13,6 +13,7 @@ CFLAGS=-O0 -ggdb3 -mcpu=cortex-m3 -mthumb \
 	-Iarm/CMSIS/include -I.
 
 LDFLAGS=--specs=rdimon.specs \
+  -g \
   -Wl,--start-group -lgcc -lc -lc -lm -lrdimon -Wl,--end-group \
   -Wl,--gc-sections \
   -L ldscripts -T gcc.ld \
