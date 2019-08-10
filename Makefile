@@ -66,4 +66,4 @@ run: $(TARGET) app
 
 oocd: app
 	@echo " Launch OpenOCD for stm32f4discovery"
-	@cd app && openocd -f board/stm32f4discovery.cfg -l oocd.log
+	openocd -f board/stm32f4discovery.cfg -l oocd.log

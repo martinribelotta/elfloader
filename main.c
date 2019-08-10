@@ -37,7 +37,7 @@
 #include "app/sysent.h"
 
 #define APP_PATH
-#define APP_NAME "app-striped.elf"
+#define APP_NAME "app/app-striped.elf"
 #define APP_STACK_SIZE 1048
 
 extern int open(const char *path, int mode, ...);
