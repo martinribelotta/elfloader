@@ -295,7 +295,7 @@ static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
         Elf32_Sym sym;
         Elf32_Addr symAddr;
 
-        char name[33] = "<unnamed>";
+        char name[LOADER_MAX_SYM_LENGTH] = "<unnamed>";
         int symEntry = ELF32_R_SYM(rel.r_info);
         int relType = ELF32_R_TYPE(rel.r_info);
         Elf32_Addr relAddr = ((Elf32_Addr) s->data) + rel.r_offset;
@@ -375,7 +375,7 @@ static int loadSymbols(ELFExec_t *e) {
   MSG("Scan ELF indexs...");
   for (n = 1; n < e->sections; n++) {
     Elf32_Shdr sectHdr;
-    char name[33] = "<unamed>";
+    char name[LOADER_MAX_SYM_LENGTH] = "<unamed>";
     if (readSecHeader(e, n, &sectHdr) != 0) {
       ERR("Error reading section");
       return -1;

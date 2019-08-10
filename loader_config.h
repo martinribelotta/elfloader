@@ -41,6 +41,8 @@
 
 #ifndef DOX
 
+#define LOADER_MAX_SYM_LENGTH 33
+
 #if 0
 #define LOADER_FD_T FILE *
 #define LOADER_OPEN_FOR_RD(path) fopen(path, "rb")
