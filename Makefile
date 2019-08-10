@@ -43,11 +43,14 @@ $(TARGET): $(OBJS)
 app:
 	@$(MAKE) -C app clean all list
 
+app-cpp:
+	@$(MAKE) -C app-cpp clean all list
+
 clean:
 	@echo " CLEAN"
 	@rm -fR $(OBJS) $(DEPS) $(TARGET)
 
-debug: $(TARGET) app
+debug: $(TARGET) app app-cpp
 	@echo " Debuggin..."
 	@$(CROSS)gdb $(TARGET) \
 		-ex 'target remote :3333' \
@@ -55,7 +58,7 @@ debug: $(TARGET) app
 		-ex 'load' \
 		-ex 'monitor arm semihosting enable'
 
-run: $(TARGET) app
+run: $(TARGET) app app-cpp
 	@echo " Debuggin..."
 	@$(CROSS)gdb $(TARGET) \
 		-ex 'target remote :3333' \
@@ -64,6 +67,6 @@ run: $(TARGET) app
 		-ex 'monitor arm semihosting enable' \
 		-ex 'continue'
 
-oocd: app
+oocd: app app-cpp
 	@echo " Launch OpenOCD for stm32f4discovery"
 	openocd -f board/stm32f4discovery.cfg -l oocd.log

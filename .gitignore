@@ -18,7 +18,7 @@
 
 # Application
 elfloader
-app.elf.read
-app.elf.list
+*.elf.read
+*.elf.list
 oocd.log
 doc/html

@@ -1,6 +1,7 @@
 /****************************************************************************
  * ARMv7M ELF loader
  * Copyright (c) 2013-2015 Martin Ribelotta
+ * Copyright (c) 2019 Johannes Taelman
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

@@ -1,6 +1,7 @@
 /****************************************************************************
  * ARMv7M ELF loader
  * Copyright (c) 2013-2015 Martin Ribelotta
+ * Copyright (c) 2019 Johannes Taelman
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,6 +61,8 @@ typedef struct {
   ELFSection_t rodata;
   ELFSection_t data;
   ELFSection_t bss;
+  ELFSection_t init_array;
+  ELFSection_t fini_array;
 
   void *stack;
 
@@ -80,6 +83,10 @@ typedef enum {
   FoundRelRodata = (1 << 8),
   FoundRelData = (1 << 9),
   FoundRelBss = (1 << 10),
+  FoundInitArray = (1 << 11),
+  FoundRelInitArray = (1 << 12),
+  FoundFiniArray = (1 << 13),
+  FoundRelFiniArray = (1 << 14),
   FoundValid = FoundSymTab | FoundStrTab,
   FoundExec = FoundValid | FoundText,
   FoundAll = FoundSymTab | FoundStrTab | FoundText | FoundRodata | FoundData
@@ -200,6 +207,7 @@ static const char *typeStr(int symt) {
   STRCASE(R_ARM_ABS32)
   STRCASE(R_ARM_THM_CALL)
   STRCASE(R_ARM_THM_JUMP24)
+  STRCASE(R_ARM_TARGET1)
   default:
     return "R_<unknow>";
   }
@@ -246,6 +254,13 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
     relJmpCall(relAddr, type, symAddr);
     DBG("  R_ARM_THM_CALL/JMP relocated is 0x%08X\n", *((uint32_t* )relAddr));
     break;
+  case R_ARM_TARGET1:
+    // quoting https://sourceware.org/binutils/docs/ld/ARM.html :
+    // "interpreted as either ‘R_ARM_REL32’ or ‘R_ARM_ABS32’, depending on the target"
+    // implementation here is as R_ARM_ABS32
+    *((uint32_t*) relAddr) += symAddr;
+    DBG("  R_ARM_TARGET1 relocated is 0x%08X\n", *((uint32_t* )relAddr));
+    break;
   default:
     DBG("  Undefined relocation %d\n", type);
     return -1;
@@ -263,6 +278,8 @@ static ELFSection_t *sectionOf(ELFExec_t *e, int index) {
   IFSECTION(e->rodata, index);
   IFSECTION(e->data, index);
   IFSECTION(e->bss, index);
+  IFSECTION(e->init_array, index);
+  IFSECTION(e->fini_array, index);
 #undef IFSECTION
   return NULL;
 }
@@ -349,6 +366,16 @@ int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
       return FoundERROR;
     e->bss.secIdx = n;
     return FoundBss;
+  } else if (LOADER_STREQ(name, ".init_array")) {
+    if (loadSecData(e, &e->init_array, sh) == -1)
+      return FoundERROR;
+    e->init_array.secIdx = n;
+    return FoundInitArray;
+  } else if (LOADER_STREQ(name, ".fini_array")) {
+    if (loadSecData(e, &e->fini_array, sh) == -1)
+      return FoundERROR;
+    e->fini_array.secIdx = n;
+    return FoundFiniArray;
   } else if (LOADER_STREQ(name, ".rel.text")) {
     e->text.relSecIdx = n;
     return FoundRelText;
@@ -358,6 +385,12 @@ int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
   } else if (LOADER_STREQ(name, ".rel.data")) {
     e->data.relSecIdx = n;
     return FoundRelText;
+  } else if (LOADER_STREQ(name, ".rel.init_array")) {
+    e->init_array.relSecIdx = n;
+    return FoundRelInitArray;
+  } else if (LOADER_STREQ(name, ".rel.fini_array")) {
+    e->fini_array.relSecIdx = n;
+    return FoundRelFiniArray;
   }
   /* BSS not need relocation */
 #if 0
@@ -425,6 +458,8 @@ static void freeElf(ELFExec_t *e) {
   freeSection(&e->rodata);
   freeSection(&e->data);
   freeSection(&e->bss);
+  freeSection(&e->init_array);
+  freeSection(&e->fini_array);
   LOADER_CLOSE(e->fd);
 }
 
@@ -447,6 +482,8 @@ static int relocateSections(ELFExec_t *e) {
   return relocateSection(e, &e->text, ".text")
       | relocateSection(e, &e->rodata, ".rodata")
       | relocateSection(e, &e->data, ".data")
+      | relocateSection(e, &e->init_array, ".init_array")
+      | relocateSection(e, &e->fini_array, ".fini_array")
       /* BSS not need relocation */
 #if 0
       | relocateSection(e, &e->bss, ".bss")
@@ -465,6 +502,49 @@ static int jumpTo(ELFExec_t *e) {
   }
 }
 
+static void do_init(ELFExec_t *e) {
+
+  if (e->init_array.data) {
+    MSG("Processing section .init_array.");
+    Elf32_Shdr sectHdr;
+    if (readSecHeader(e, e->init_array.secIdx, &sectHdr) != 0) {
+      ERR("Error reading section header");
+      return;
+    }
+    entry_t **entry = (entry_t**) (e->init_array.data);
+    int i;
+    int n = sectHdr.sh_size >> 2;
+    for(i=0;i<n;i++) {
+      DBG("Processing .init_array[%d] : %08x->%08x\n", i, (int)entry, (int)*entry);
+      (*entry)();
+      entry++;
+    }
+  } else {
+    MSG("No .init_array"); // and that's fine
+  }
+}
+
+static void do_fini(ELFExec_t *e) {
+  if (e->fini_array.data) {
+    MSG("Processing section .fini_array.");
+    Elf32_Shdr sectHdr;
+    if (readSecHeader(e, e->fini_array.secIdx, &sectHdr) != 0) {
+      ERR("Error reading section header");
+      return;
+    }
+    entry_t **entry = (entry_t**) (e->fini_array.data);
+    int i;
+    int n = sectHdr.sh_size >> 2;
+    for(i=0;i<n;i++) {
+      DBG("Processing .fini_array[%d] : %08x->%08x\n", i, (int)entry, (int)*entry);
+      (*entry)();
+      entry++;
+    }
+  } else {
+    MSG("No .fini_array"); // and that's fine too
+  }
+}
+
 int exec_elf(const char *path, const ELFEnv_t *env) {
   ELFExec_t exec;
   if (initElf(&exec, LOADER_OPEN_FOR_RD(path)) != 0) {
@@ -474,8 +554,11 @@ int exec_elf(const char *path, const ELFEnv_t *env) {
   exec.env = env;
   if (IS_FLAGS_SET(loadSymbols(&exec), FoundValid)) {
     int ret = -1;
-    if (relocateSections(&exec) == 0)
+    if (relocateSections(&exec) == 0) {
+      do_init(&exec);
       ret = jumpTo(&exec);
+      do_fini(&exec);
+    }
     freeElf(&exec);
     return ret;
   } else {
