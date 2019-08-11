@@ -413,7 +413,15 @@ static int initElf(ELFExec_t *e, LOADER_FD_T f) {
   e->sectionTable = h.e_shoff;
   e->sectionTableStrings = sH.sh_offset;
 
-  /* TODO Check ELF validity */
+  const char elfmagic[EI_MAGIC_SIZE] = EI_MAGIC;
+  if (h.e_ident[EI_MAG0] != elfmagic[EI_MAG0]) return 1;
+  if (h.e_ident[EI_MAG1] != elfmagic[EI_MAG1]) return 1;
+  if (h.e_ident[EI_MAG2] != elfmagic[EI_MAG2]) return 1;
+  if (h.e_ident[EI_MAG3] != elfmagic[EI_MAG3]) return 1;
+  if (h.e_ident[EI_CLASS] != ELFCLASS32) return 1;
+  if (h.e_type != ET_REL) return 1;
+  if (h.e_machine != EM_ARM) return 1;
+  if (h.e_version != EV_CURRENT) return 1;
 
   return 0;
 }
