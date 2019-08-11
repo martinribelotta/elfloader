@@ -56,6 +56,8 @@ typedef enum {
   FoundExec = FoundValid | FoundText,
   FoundAll = FoundSymTab | FoundStrTab | FoundText | FoundRodata | FoundData
       | FoundBss | FoundRelText | FoundRelRodata | FoundRelData | FoundRelBss
+      | FoundInitArray | FoundRelInitArray
+      | FoundFiniArray | FoundRelFiniArray
 } FindFlags_t;
 
 static int readSectionName(ELFExec_t *e, off_t off, char *buf, size_t max) {
@@ -346,10 +348,10 @@ int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
     return FoundRelText;
   } else if (LOADER_STREQ(name, ".rel.rodata")) {
     e->rodata.relSecIdx = n;
-    return FoundRelText;
+    return FoundRelRodata;
   } else if (LOADER_STREQ(name, ".rel.data")) {
     e->data.relSecIdx = n;
-    return FoundRelText;
+    return FoundRelData;
   } else if (LOADER_STREQ(name, ".rel.init_array")) {
     e->init_array.relSecIdx = n;
     return FoundRelInitArray;
