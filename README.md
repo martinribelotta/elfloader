@@ -32,10 +32,10 @@ An example of application is found in the __app__ folder
 
 ### Usage
 
-The API is simple, call to #exec_elf function and enjoying.
+The API is simple, first call to #load_elf to obtain an execution context.
 
 ```c
-    extern int exec_elf(const char *path, const ELFEnv_t *env);
+    extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec);
 ```
 
 This function take a path to a file, and ELFEnv_t is a struct containing:
@@ -49,6 +49,24 @@ This function take a path to a file, and ELFEnv_t is a struct containing:
 
  - `exported`: Array of symbols to resolve in executable. `ELFSymbol_t` is a struct contains `const char *name` for C-String symbol name and `void *ptr` pointer to memory related to symbol (entry point of function, variable address, etc)
  - `size`: Size of exported symbol array in elements number
+
+Then, #jumpTo and #get_func calls can be made:
+
+```c
+    extern int jumpTo(ELFExec_t *exec);
+```
+to execute code at the entry point of the ELF.
+
+```c
+    extern void * get_func(ELFExec_t *exec, const char *func_name);
+```
+to obtain a function pointer corresponding to a (mangled) symbol name.
+
+Finally, the execution context can be cleaned up:
+
+```c
+    extern int unload_elf(ELFExec_t *exec);
+```
 
 ### Loader config
 ##### File handling macros

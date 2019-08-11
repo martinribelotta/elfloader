@@ -32,6 +32,9 @@
 #ifndef LOADER_H_
 #define LOADER_H_
 
+#include <sys/types.h>
+
+
 #ifdef __cplusplus__
 extern "C" {
 #endif
@@ -50,6 +53,19 @@ typedef enum {
   ELF_SEC_EXEC = 0x4, /*!< Enable for execution (instruction fetch) */
 } ELFSecPerm_t;
 
+
+
+
+typedef struct {
+  void *data;
+  int secIdx;
+  off_t relSecIdx;
+} ELFSection_t;
+
+typedef void (entry_t)(void);
+
+#include "loader_config.h"
+
 /**
  * Exported symbol struct
  */
@@ -66,15 +82,52 @@ typedef struct {
   unsigned int exported_size; /*!< Elements on exported symbol array */
 } ELFEnv_t;
 
+
+typedef struct {
+  LOADER_FD_T fd;
+
+  size_t sections;
+  off_t sectionTable;
+  off_t sectionTableStrings;
+
+  size_t symbolCount;
+  off_t symbolTable;
+  off_t symbolTableStrings;
+  off_t entry;
+
+  ELFSection_t text;
+  ELFSection_t rodata;
+  ELFSection_t data;
+  ELFSection_t bss;
+  ELFSection_t init_array;
+  ELFSection_t fini_array;
+
+  void *stack;
+
+  const ELFEnv_t *env;
+} ELFExec_t;
+
 /**
- * Execute ELF file from "path" with environment "env"
+ * Load ELF file from "path" with environment "env"
  * @param path Path to file to load
  * @param env Pointer to environment struct
+ * @param exec Pointer to ELFExec_t struct
  * @retval 0 On successful
- * @retval -1 On fail
  * @todo Error information
  */
-extern int exec_elf(const char *path, const ELFEnv_t *env);
+extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec);
+
+/**
+ * Unload ELF
+ * @param exec Pointer to ELFExec_t struct
+ * @retval 0 On successful
+ * @todo Error information
+ */
+extern int unload_elf(ELFExec_t *exec);
+
+extern int jumpTo(ELFExec_t *exec);
+
+extern void * get_func(ELFExec_t *exec, const char *func_name);
 
 /** @} */
 

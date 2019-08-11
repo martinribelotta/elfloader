@@ -32,44 +32,9 @@
 #include "loader.h"
 #include "elf.h"
 #include "app/sysent.h"
-#include "loader_config.h"
 
 #define IS_FLAGS_SET(v, m) ((v&m) == m)
 #define SECTION_OFFSET(e, n) (e->sectionTable + n * sizeof(Elf32_Shdr))
-
-#ifndef DOX
-
-typedef struct {
-  void *data;
-  int secIdx;
-  off_t relSecIdx;
-} ELFSection_t;
-
-typedef struct {
-  LOADER_FD_T fd;
-
-  size_t sections;
-  off_t sectionTable;
-  off_t sectionTableStrings;
-
-  size_t symbolCount;
-  off_t symbolTable;
-  off_t symbolTableStrings;
-  off_t entry;
-
-  ELFSection_t text;
-  ELFSection_t rodata;
-  ELFSection_t data;
-  ELFSection_t bss;
-  ELFSection_t init_array;
-  ELFSection_t fini_array;
-
-  void *stack;
-
-  const ELFEnv_t *env;
-} ELFExec_t;
-
-#endif
 
 typedef enum {
   FoundERROR = 0,
@@ -491,7 +456,7 @@ static int relocateSections(ELFExec_t *e) {
   ;
 }
 
-static int jumpTo(ELFExec_t *e) {
+int jumpTo(ELFExec_t *e) {
   if (e->entry) {
     entry_t *entry = (entry_t*) (e->text.data + e->entry);
     LOADER_JUMP_TO(entry);
@@ -545,24 +510,24 @@ static void do_fini(ELFExec_t *e) {
   }
 }
 
-entry_t* get_func(ELFExec_t *e, const char *func_name) {
-  off_t old = LOADER_TELL(e->fd);
-  off_t pos = e->symbolTable;
-  if (LOADER_SEEK_FROM_START(e->fd, pos) != 0) {
+void * get_func(ELFExec_t *exec, const char *func_name) {
+  off_t old = LOADER_TELL(exec->fd);
+  off_t pos = exec->symbolTable;
+  if (LOADER_SEEK_FROM_START(exec->fd, pos) != 0) {
     MSG("seek err");
     return 0;
   }
   int i;
   entry_t *addr = 0;
-  for (i = 0; i < e->symbolCount; i++) {
+  for (i = 0; i < exec->symbolCount; i++) {
     Elf32_Sym sym;
-    if (LOADER_READ(e->fd, &sym, sizeof(Elf32_Sym)) == sizeof(Elf32_Sym)) {
+    if (LOADER_READ(exec->fd, &sym, sizeof(Elf32_Sym)) == sizeof(Elf32_Sym)) {
       if (sym.st_name && (ELF32_ST_TYPE(sym.st_info) == STT_FUNC)) {
         char name[LOADER_MAX_SYM_LENGTH] = "<unnamed>";
-        int ret = readSymbolName(e, sym.st_name, name, sizeof(name));
+        int ret = readSymbolName(exec, sym.st_name, name, sizeof(name));
         //DBG("sym %d = \"%s\" @ %08x, st_shndx = %d\n",i,name,sym.st_value, sym.st_shndx);
         if (LOADER_STREQ(name, func_name)) {
-          ELFSection_t *symSec = sectionOf(e, sym.st_shndx);
+          ELFSection_t *symSec = sectionOf(exec, sym.st_shndx);
           if (symSec) {
             addr = (entry_t*) (((Elf32_Addr) symSec->data) + sym.st_value);
             DBG("function \"%s\" found @ %08x\n", name, addr);
@@ -572,35 +537,32 @@ entry_t* get_func(ELFExec_t *e, const char *func_name) {
       }
     }
   }
-  (void) LOADER_SEEK_FROM_START(e->fd, old);
+  (void) LOADER_SEEK_FROM_START(exec->fd, old);
   if (!addr) {
     DBG("function \"%s\" not found\n", func_name);
   }
   return addr;
 }
 
-int exec_elf(const char *path, const ELFEnv_t *env) {
-  ELFExec_t exec;
-  if (initElf(&exec, LOADER_OPEN_FOR_RD(path)) != 0) {
+int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec) {
+  if (initElf(exec, LOADER_OPEN_FOR_RD(path)) != 0) {
     DBG("Invalid elf %s\n", path);
     return -1;
   }
-  exec.env = env;
-  if (IS_FLAGS_SET(loadSymbols(&exec), FoundValid)) {
-    int ret = -1;
-    if (relocateSections(&exec) == 0) {
-      do_init(&exec);
-      ret = jumpTo(&exec);
-      entry_t * doit = get_func(&exec, "doit");
-      if (doit) {
-        (doit)();
-      }
-      do_fini(&exec);
-    }
-    freeElf(&exec);
-    return ret;
-  } else {
-    MSG("Invalid EXEC");
-    return -1;
+  exec->env = env;
+  if (!IS_FLAGS_SET(loadSymbols(exec), FoundValid)) {
+    return -2;
   }
+  if (relocateSections(exec) != 0) {
+    return -3;
+  }
+  do_init(exec);
+  return 0;
 }
+
+int unload_elf(ELFExec_t *exec) {
+  do_fini(exec);
+  freeElf(exec);
+  return 0;
+}
+

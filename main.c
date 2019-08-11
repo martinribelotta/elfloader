@@ -1,6 +1,7 @@
 /****************************************************************************
  * ARMv7M ELF loader
  * Copyright (c) 2013-2015 Martin Ribelotta
+ * Copyright (c) 2019 Johannes Taelman
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,7 +38,8 @@
 #include "app/sysent.h"
 
 #define APP_PATH
-#define APP_NAME "app/app-striped.elf"
+//#define APP_NAME "app/app-striped.elf"
+#define APP_NAME "app-cpp/app-cpp-striped.elf"
 #define APP_STACK_SIZE 1048
 
 extern int open(const char *path, int mode, ...);
@@ -53,6 +55,18 @@ scanf /* */
 
 static const ELFSymbol_t exports[] = { { "syscalls", (void*) &sysentries } };
 static const ELFEnv_t env = { exports, sizeof(exports) / sizeof(*exports) };
+
+static int exec_elf(const char *path, const ELFEnv_t *env) {
+  ELFExec_t exec;
+  load_elf(path, env, &exec);
+  int ret = jumpTo(&exec);
+  entry_t * doit = get_func(&exec, "doit");
+  if (doit) {
+    (doit)();
+  }
+  unload_elf(&exec);
+  return 0;
+}
 
 int main(void) {
   exec_elf(APP_PATH APP_NAME, &env);
