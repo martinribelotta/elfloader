@@ -545,6 +545,40 @@ static void do_fini(ELFExec_t *e) {
   }
 }
 
+entry_t* get_func(ELFExec_t *e, const char *func_name) {
+  off_t old = LOADER_TELL(e->fd);
+  off_t pos = e->symbolTable;
+  if (LOADER_SEEK_FROM_START(e->fd, pos) != 0) {
+    MSG("seek err");
+    return 0;
+  }
+  int i;
+  entry_t *addr = 0;
+  for (i = 0; i < e->symbolCount; i++) {
+    Elf32_Sym sym;
+    if (LOADER_READ(e->fd, &sym, sizeof(Elf32_Sym)) == sizeof(Elf32_Sym)) {
+      if (sym.st_name && (ELF32_ST_TYPE(sym.st_info) == STT_FUNC)) {
+        char name[LOADER_MAX_SYM_LENGTH] = "<unnamed>";
+        int ret = readSymbolName(e, sym.st_name, name, sizeof(name));
+        //DBG("sym %d = \"%s\" @ %08x, st_shndx = %d\n",i,name,sym.st_value, sym.st_shndx);
+        if (LOADER_STREQ(name, func_name)) {
+          ELFSection_t *symSec = sectionOf(e, sym.st_shndx);
+          if (symSec) {
+            addr = (entry_t*) (((Elf32_Addr) symSec->data) + sym.st_value);
+            DBG("function \"%s\" found @ %08x\n", name, addr);
+            break;
+          }
+        }
+      }
+    }
+  }
+  (void) LOADER_SEEK_FROM_START(e->fd, old);
+  if (!addr) {
+    DBG("function \"%s\" not found\n", func_name);
+  }
+  return addr;
+}
+
 int exec_elf(const char *path, const ELFEnv_t *env) {
   ELFExec_t exec;
   if (initElf(&exec, LOADER_OPEN_FOR_RD(path)) != 0) {
@@ -557,6 +591,10 @@ int exec_elf(const char *path, const ELFEnv_t *env) {
     if (relocateSections(&exec) == 0) {
       do_init(&exec);
       ret = jumpTo(&exec);
+      entry_t * doit = get_func(&exec, "doit");
+      if (doit) {
+        (doit)();
+      }
       do_fini(&exec);
     }
     freeElf(&exec);
