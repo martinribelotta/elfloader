@@ -32,7 +32,7 @@
 #include "loader.h"
 #include "elf.h"
 #include "app/sysent.h"
-#include "loader_config.h"
+#include <loader_config.h>
 
 #define IS_FLAGS_SET(v, m) ((v&m) == m)
 #define SECTION_OFFSET(e, n) (e->sectionTable + n * sizeof(Elf32_Shdr))
