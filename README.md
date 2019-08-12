@@ -28,6 +28,8 @@ For correct handling, The code must be compiled with certain characteristics:
 * Relocatable ELF is required (LD -r option)
 * No start library (LD -nostartfiles)
 
+Additionally, following memory sections are recognized: .sdram_data, .sdram_rodata, .sdram_bss.
+
 An example of application is found in the __app__ folder
 
 ### Usage
@@ -79,6 +81,7 @@ Finally, the execution context can be cleaned up:
    - `LOADER_TELL(fd)` Tell position of fd cursor
 #####  Memory manager/access
    - `LOADER_ALIGN_ALLOC(size, align, perm)` Aligned malloc function macro
+   - `LOADER_ALIGN_ALLOC_SDRAM(size, align, perm)` Aligned malloc function macro (for .sdram_* sections)
    - `LOADER_FREE(ptr)` Free memory function
    - `LOADER_CLEAR(ptr, size)` Memory clearance (to 0) function
    - `LOADER_STREQ(s1, s2)` String compare function (return !=0 if s1==s2)

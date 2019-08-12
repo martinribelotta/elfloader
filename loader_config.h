@@ -68,8 +68,10 @@
 #else
 
 extern void *do_alloc(size_t size, size_t align, ELFSecPerm_t perm);
+extern void *do_alloc_sdram(size_t size, size_t align, ELFSecPerm_t perm);
 
 #define LOADER_ALIGN_ALLOC(size, align, perm) do_alloc(size, align, perm)
+#define LOADER_ALIGN_ALLOC_SDRAM(size, align, perm) do_alloc_sdram(size, align, perm)
 
 #endif
 

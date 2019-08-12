@@ -79,6 +79,13 @@ void *do_alloc(size_t size, size_t align, ELFSecPerm_t perm) {
   return memalign(align, size);
 }
 
+void *do_alloc_sdram(size_t size, size_t align, ELFSecPerm_t perm) {
+  (void) perm;
+  // printf("alloc sdram: %8x\n", size);
+  /* TODO Change perms with MPU */
+  return memalign(align, size);
+}
+
 void arch_jumpTo(entry_t entry) {
 #if 1
   entry();

@@ -101,6 +101,9 @@ typedef struct {
   ELFSection_t bss;
   ELFSection_t init_array;
   ELFSection_t fini_array;
+  ELFSection_t sdram_rodata;
+  ELFSection_t sdram_data;
+  ELFSection_t sdram_bss;
 
   void *stack;
 

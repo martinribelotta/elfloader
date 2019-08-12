@@ -52,6 +52,12 @@ typedef enum {
   FoundRelInitArray = (1 << 12),
   FoundFiniArray = (1 << 13),
   FoundRelFiniArray = (1 << 14),
+  FoundSDRamRodata = (1 << 15),
+  FoundSDRamData = (1 << 16),
+  FoundSDRamBss = (1 << 17),
+  FoundRelSDRamRodata = (1 << 18),
+  FoundRelSDRamData = (1 << 19),
+  FoundRelSDRamBss = (1 << 20),
   FoundValid = FoundSymTab | FoundStrTab,
   FoundExec = FoundValid | FoundText,
   FoundAll = FoundSymTab | FoundStrTab | FoundText | FoundRodata | FoundData
@@ -107,12 +113,21 @@ static void dumpData(uint8_t *data, size_t size) {
 #endif
 }
 
-static int loadSecData(ELFExec_t *e, ELFSection_t *s, Elf32_Shdr *h) {
+typedef enum {
+  sram = 0,
+  sdram = 1
+} MemType_t;
+
+static int loadSecData(ELFExec_t *e, ELFSection_t *s, Elf32_Shdr *h, MemType_t memType) {
   if (!h->sh_size) {
     MSG(" No data for section");
     return 0;
   }
-  s->data = LOADER_ALIGN_ALLOC(h->sh_size, h->sh_addralign, h->sh_flags);
+  if (memType == sdram) {
+    s->data = LOADER_ALIGN_ALLOC_SDRAM(h->sh_size, h->sh_addralign, h->sh_flags);
+  } else {
+    s->data = LOADER_ALIGN_ALLOC(h->sh_size, h->sh_addralign, h->sh_flags);
+  }
   if (!s->data) {
     ERR("    GET MEMORY fail");
     return -1;
@@ -245,6 +260,9 @@ static ELFSection_t *sectionOf(ELFExec_t *e, int index) {
   IFSECTION(e->rodata, index);
   IFSECTION(e->data, index);
   IFSECTION(e->bss, index);
+  IFSECTION(e->sdram_rodata, index);
+  IFSECTION(e->sdram_data, index);
+  IFSECTION(e->sdram_bss, index);
   IFSECTION(e->init_array, index);
   IFSECTION(e->fini_array, index);
 #undef IFSECTION
@@ -305,7 +323,7 @@ static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
   return -1;
 }
 
-int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
+static int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
   if (LOADER_STREQ(name, ".symtab")) {
     e->symbolTable = sh->sh_offset;
     e->symbolCount = sh->sh_size / sizeof(Elf32_Sym);
@@ -314,32 +332,47 @@ int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
     e->symbolTableStrings = sh->sh_offset;
     return FoundStrTab;
   } else if (LOADER_STREQ(name, ".text")) {
-    if (loadSecData(e, &e->text, sh) == -1)
+    if (loadSecData(e, &e->text, sh, sram) == -1)
       return FoundERROR;
     e->text.secIdx = n;
     return FoundText;
   } else if (LOADER_STREQ(name, ".rodata")) {
-    if (loadSecData(e, &e->rodata, sh) == -1)
+    if (loadSecData(e, &e->rodata, sh, sram) == -1)
       return FoundERROR;
     e->rodata.secIdx = n;
     return FoundRodata;
   } else if (LOADER_STREQ(name, ".data")) {
-    if (loadSecData(e, &e->data, sh) == -1)
+    if (loadSecData(e, &e->data, sh, sram) == -1)
       return FoundERROR;
     e->data.secIdx = n;
     return FoundData;
   } else if (LOADER_STREQ(name, ".bss")) {
-    if (loadSecData(e, &e->bss, sh) == -1)
+    if (loadSecData(e, &e->bss, sh, sram) == -1)
       return FoundERROR;
     e->bss.secIdx = n;
     return FoundBss;
+  } else if (LOADER_STREQ(name, ".sdram_rodata")) {
+    if (loadSecData(e, &e->sdram_rodata, sh, sdram) == -1)
+      return FoundERROR;
+    e->sdram_rodata.secIdx = n;
+    return FoundSDRamRodata;
+  } else if (LOADER_STREQ(name, ".sdram_data")) {
+    if (loadSecData(e, &e->sdram_data, sh, sdram) == -1)
+      return FoundERROR;
+    e->sdram_data.secIdx = n;
+    return FoundSDRamData;
+  } else if (LOADER_STREQ(name, ".sdram_bss")) {
+    if (loadSecData(e, &e->sdram_bss, sh, sdram) == -1)
+      return FoundERROR;
+    e->sdram_bss.secIdx = n;
+    return FoundSDRamBss;
   } else if (LOADER_STREQ(name, ".init_array")) {
-    if (loadSecData(e, &e->init_array, sh) == -1)
+    if (loadSecData(e, &e->init_array, sh, sram) == -1)
       return FoundERROR;
     e->init_array.secIdx = n;
     return FoundInitArray;
   } else if (LOADER_STREQ(name, ".fini_array")) {
-    if (loadSecData(e, &e->fini_array, sh) == -1)
+    if (loadSecData(e, &e->fini_array, sh, sram) == -1)
       return FoundERROR;
     e->fini_array.secIdx = n;
     return FoundFiniArray;
@@ -352,6 +385,12 @@ int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
   } else if (LOADER_STREQ(name, ".rel.data")) {
     e->data.relSecIdx = n;
     return FoundRelData;
+  } else if (LOADER_STREQ(name, ".rel.sdram_rodata")) {
+    e->sdram_rodata.relSecIdx = n;
+    return FoundRelSDRamRodata;
+  } else if (LOADER_STREQ(name, ".rel.sdram_data")) {
+    e->sdram_data.relSecIdx = n;
+    return FoundRelSDRamData;
   } else if (LOADER_STREQ(name, ".rel.init_array")) {
     e->init_array.relSecIdx = n;
     return FoundRelInitArray;
@@ -433,6 +472,9 @@ static void freeElf(ELFExec_t *e) {
   freeSection(&e->rodata);
   freeSection(&e->data);
   freeSection(&e->bss);
+  freeSection(&e->sdram_rodata);
+  freeSection(&e->sdram_data);
+  freeSection(&e->sdram_bss);
   freeSection(&e->init_array);
   freeSection(&e->fini_array);
   LOADER_CLOSE(e->fd);
@@ -457,6 +499,8 @@ static int relocateSections(ELFExec_t *e) {
   return relocateSection(e, &e->text, ".text")
       | relocateSection(e, &e->rodata, ".rodata")
       | relocateSection(e, &e->data, ".data")
+      | relocateSection(e, &e->sdram_rodata, ".sdram_rodata")
+      | relocateSection(e, &e->sdram_data, ".sdram_data")
       | relocateSection(e, &e->init_array, ".init_array")
       | relocateSection(e, &e->fini_array, ".fini_array")
       /* BSS not need relocation */
