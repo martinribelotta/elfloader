@@ -37,7 +37,7 @@ An example of application is found in the __app__ folder
 The API is simple, first call to #load_elf to obtain an execution context.
 
 ```c
-    extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec);
+    extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t **exec);
 ```
 
 This function take a path to a file, and ELFEnv_t is a struct containing:

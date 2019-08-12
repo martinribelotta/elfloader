@@ -32,9 +32,48 @@
 #include "loader.h"
 #include "elf.h"
 #include "app/sysent.h"
+#include "loader_config.h"
 
 #define IS_FLAGS_SET(v, m) ((v&m) == m)
 #define SECTION_OFFSET(e, n) (e->sectionTable + n * sizeof(Elf32_Shdr))
+
+#ifndef DOX
+
+typedef struct {
+  void *data;
+  int secIdx;
+  off_t relSecIdx;
+} ELFSection_t;
+
+typedef struct ELFExec {
+  LOADER_FD_T fd;
+
+  size_t sections;
+  off_t sectionTable;
+  off_t sectionTableStrings;
+
+  size_t symbolCount;
+  off_t symbolTable;
+  off_t symbolTableStrings;
+  off_t entry;
+
+  ELFSection_t text;
+  ELFSection_t rodata;
+  ELFSection_t data;
+  ELFSection_t bss;
+  ELFSection_t init_array;
+  ELFSection_t fini_array;
+  ELFSection_t sdram_rodata;
+  ELFSection_t sdram_data;
+  ELFSection_t sdram_bss;
+
+  void *stack;
+
+  const ELFEnv_t *env;
+} ELFExec_t;
+
+
+#endif
 
 typedef enum {
   FoundERROR = 0,
@@ -598,7 +637,13 @@ void * get_func(ELFExec_t *exec, const char *func_name) {
   return addr;
 }
 
-int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec) {
+int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t **exec_ptr) {
+  ELFExec_t *exec;
+  exec = LOADER_ALIGN_ALLOC(sizeof(ELFExec_t), 4, ELF_SEC_READ | ELF_SEC_WRITE);
+  if (!exec) {
+    DBG("allocation failed\n\n");
+    return -1;
+  }
   if (initElf(exec, LOADER_OPEN_FOR_RD(path)) != 0) {
     DBG("Invalid elf %s\n", path);
     return -1;
@@ -611,12 +656,14 @@ int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec) {
     return -3;
   }
   do_init(exec);
+  *exec_ptr = exec;
   return 0;
 }
 
 int unload_elf(ELFExec_t *exec) {
   do_fini(exec);
   freeElf(exec);
+  LOADER_FREE(exec);
   return 0;
 }
 

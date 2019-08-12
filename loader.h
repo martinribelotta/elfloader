@@ -32,9 +32,6 @@
 #ifndef LOADER_H_
 #define LOADER_H_
 
-#include <sys/types.h>
-
-
 #ifdef __cplusplus__
 extern "C" {
 #endif
@@ -54,18 +51,6 @@ typedef enum {
 } ELFSecPerm_t;
 
 
-
-
-typedef struct {
-  void *data;
-  int secIdx;
-  off_t relSecIdx;
-} ELFSection_t;
-
-typedef void (entry_t)(void);
-
-#include "loader_config.h"
-
 /**
  * Exported symbol struct
  */
@@ -82,43 +67,19 @@ typedef struct {
   unsigned int exported_size; /*!< Elements on exported symbol array */
 } ELFEnv_t;
 
+typedef void (entry_t)(void);
 
-typedef struct {
-  LOADER_FD_T fd;
-
-  size_t sections;
-  off_t sectionTable;
-  off_t sectionTableStrings;
-
-  size_t symbolCount;
-  off_t symbolTable;
-  off_t symbolTableStrings;
-  off_t entry;
-
-  ELFSection_t text;
-  ELFSection_t rodata;
-  ELFSection_t data;
-  ELFSection_t bss;
-  ELFSection_t init_array;
-  ELFSection_t fini_array;
-  ELFSection_t sdram_rodata;
-  ELFSection_t sdram_data;
-  ELFSection_t sdram_bss;
-
-  void *stack;
-
-  const ELFEnv_t *env;
-} ELFExec_t;
+typedef struct ELFExec ELFExec_t;
 
 /**
  * Load ELF file from "path" with environment "env"
  * @param path Path to file to load
  * @param env Pointer to environment struct
- * @param exec Pointer to ELFExec_t struct
+ * @param exec returns pointer to ELFExec_t struct
  * @retval 0 On successful
  * @todo Error information
  */
-extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec);
+extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t **exec);
 
 /**
  * Unload ELF
@@ -128,8 +89,21 @@ extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t *exec);
  */
 extern int unload_elf(ELFExec_t *exec);
 
+/**
+ * Jump to entrypoint
+ * @param exec Pointer to ELFExec_t struct
+ * @retval 0 On successful
+ * @todo Error information
+ */
 extern int jumpTo(ELFExec_t *exec);
 
+/**
+ * Jump to entrypoint
+ * @param exec Pointer to ELFExec_t struct
+ * @param func_name function symbol name (mangled if C++)
+ * @retval function pointer, 0 On failure
+ * @todo Error information
+ */
 extern void * get_func(ELFExec_t *exec, const char *func_name);
 
 /** @} */

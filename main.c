@@ -57,14 +57,14 @@ static const ELFSymbol_t exports[] = { { "syscalls", (void*) &sysentries } };
 static const ELFEnv_t env = { exports, sizeof(exports) / sizeof(*exports) };
 
 static int exec_elf(const char *path, const ELFEnv_t *env) {
-  ELFExec_t exec;
+  ELFExec_t *exec;
   load_elf(path, env, &exec);
-  int ret = jumpTo(&exec);
-  entry_t * doit = get_func(&exec, "doit");
+  int ret = jumpTo(exec);
+  void (*doit)(void) = get_func(exec, "doit");
   if (doit) {
     (doit)();
   }
-  unload_elf(&exec);
+  unload_elf(exec);
   return 0;
 }
 
