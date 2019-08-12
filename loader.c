@@ -255,10 +255,10 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
 
 static ELFSection_t *sectionOf(ELFExec_t *e, int index) {
 #define IFSECTION(sec, i) \
-	do { \
-		if ((sec).secIdx == i) \
-			return &(sec); \
-	} while(0)
+  do { \
+    if ((sec).secIdx == i) \
+      return &(sec); \
+  } while(0)
   IFSECTION(e->text, index);
   IFSECTION(e->rodata, index);
   IFSECTION(e->data, index);
