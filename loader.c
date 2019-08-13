@@ -603,7 +603,7 @@ static void do_fini(ELFExec_t *e) {
   }
 }
 
-void * get_func(ELFExec_t *exec, const char *func_name) {
+static void* get_sym(ELFExec_t *exec, const char *sym_name, int symbol_type) {
   off_t old = LOADER_TELL(exec->fd);
   off_t pos = exec->symbolTable;
   if (LOADER_SEEK_FROM_START(exec->fd, pos) != 0) {
@@ -615,15 +615,15 @@ void * get_func(ELFExec_t *exec, const char *func_name) {
   for (i = 0; i < exec->symbolCount; i++) {
     Elf32_Sym sym;
     if (LOADER_READ(exec->fd, &sym, sizeof(Elf32_Sym)) == sizeof(Elf32_Sym)) {
-      if (sym.st_name && (ELF32_ST_TYPE(sym.st_info) == STT_FUNC)) {
+      if (sym.st_name && (ELF32_ST_TYPE(sym.st_info) == symbol_type)) {
         char name[LOADER_MAX_SYM_LENGTH] = "<unnamed>";
         int ret = readSymbolName(exec, sym.st_name, name, sizeof(name));
         //DBG("sym %d = \"%s\" @ %08x, st_shndx = %d\n",i,name,sym.st_value, sym.st_shndx);
-        if (LOADER_STREQ(name, func_name)) {
+        if (LOADER_STREQ(name, sym_name)) {
           ELFSection_t *symSec = sectionOf(exec, sym.st_shndx);
           if (symSec) {
             addr = (entry_t*) (((Elf32_Addr) symSec->data) + sym.st_value);
-            DBG("function \"%s\" found @ %08x\n", name, addr);
+            DBG("sym \"%s\" found @ %08x\n", name, addr);
             break;
           }
         }
@@ -632,9 +632,17 @@ void * get_func(ELFExec_t *exec, const char *func_name) {
   }
   (void) LOADER_SEEK_FROM_START(exec->fd, old);
   if (!addr) {
-    DBG("function \"%s\" not found\n", func_name);
+    DBG("sym \"%s\" not found\n", sym_name);
   }
   return addr;
+}
+
+void* get_obj(ELFExec_t *exec, const char *obj_name) {
+  return get_sym(exec, obj_name, STT_OBJECT);
+}
+
+void* get_func(ELFExec_t *exec, const char *func_name) {
+  return get_sym(exec, func_name, STT_FUNC);
 }
 
 int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t **exec_ptr) {

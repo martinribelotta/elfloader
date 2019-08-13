@@ -98,13 +98,22 @@ extern int unload_elf(ELFExec_t *exec);
 extern int jumpTo(ELFExec_t *exec);
 
 /**
- * Jump to entrypoint
+ * Get function pointer
  * @param exec Pointer to ELFExec_t struct
  * @param func_name function symbol name (mangled if C++)
  * @retval function pointer, 0 On failure
  * @todo Error information
  */
 extern void * get_func(ELFExec_t *exec, const char *func_name);
+
+/**
+ * Get object pointer
+ * @param exec Pointer to ELFExec_t struct
+ * @param func_name function symbol name (mangled if C++)
+ * @retval object pointer, 0 On failure
+ * @todo Error information
+ */
+extern void * get_obj(ELFExec_t *exec, const char *obj_name);
 
 /** @} */
 

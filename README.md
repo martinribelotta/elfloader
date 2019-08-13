@@ -59,10 +59,18 @@ Then, #jumpTo and #get_func calls can be made:
 ```
 to execute code at the entry point of the ELF.
 
+Use
 ```c
     extern void * get_func(ELFExec_t *exec, const char *func_name);
 ```
 to obtain a function pointer corresponding to a (mangled) symbol name.
+
+And
+```c
+    extern void * get_obj(ELFExec_t *exec, const char *obj_name);
+```
+to obtain a pointer corresponding to a global variable.
+
 
 Finally, the execution context can be cleaned up:
 
