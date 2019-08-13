@@ -357,8 +357,9 @@ static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
       }
     }
     return 0;
-  } else
+  } else {
     MSG("Section not loaded");
+  }
   return -1;
 }
 
@@ -529,8 +530,9 @@ static int relocateSection(ELFExec_t *e, ELFSection_t *s, const char *name) {
       ERR("Error reading section header");
       return -1;
     }
-  } else
+  } else {
     MSG("No relocation index"); /* Not an error */
+  }
   return 0;
 }
 
@@ -618,13 +620,17 @@ static void* get_sym(ELFExec_t *exec, const char *sym_name, int symbol_type) {
       if (sym.st_name && (ELF32_ST_TYPE(sym.st_info) == symbol_type)) {
         char name[LOADER_MAX_SYM_LENGTH] = "<unnamed>";
         int ret = readSymbolName(exec, sym.st_name, name, sizeof(name));
-        //DBG("sym %d = \"%s\" @ %08x, st_shndx = %d\n",i,name,sym.st_value, sym.st_shndx);
-        if (LOADER_STREQ(name, sym_name)) {
-          ELFSection_t *symSec = sectionOf(exec, sym.st_shndx);
-          if (symSec) {
-            addr = (entry_t*) (((Elf32_Addr) symSec->data) + sym.st_value);
-            DBG("sym \"%s\" found @ %08x\n", name, addr);
-            break;
+        if (!ret) {
+          DBG("readSymbolName failed");
+        } else {
+          //DBG("sym %d = \"%s\" @ %08x, st_shndx = %d\n",i,name,sym.st_value, sym.st_shndx);
+          if (LOADER_STREQ(name, sym_name)) {
+            ELFSection_t *symSec = sectionOf(exec, sym.st_shndx);
+            if (symSec) {
+              addr = (entry_t*) (((Elf32_Addr) symSec->data) + sym.st_value);
+              DBG("sym \"%s\" found @ %08x\n", name, addr);
+              break;
+            }
           }
         }
       }
