@@ -171,17 +171,26 @@ static int loadSecData(ELFExec_t *e, ELFSection_t *s, Elf32_Shdr *h, MemType_t m
     ERR("    GET MEMORY fail");
     return -1;
   }
-  if (LOADER_SEEK_FROM_START(e->fd, h->sh_offset) != 0) {
-    ERR("    seek fail");
-    freeSection(s);
-    return -1;
+  if (h->sh_type == SHT_NOBITS) {
+    // init with zeros
+    char *p = s->data;
+    int i, sz = h->sh_size;
+    for (i = 0; i < sz; i++) {
+      *p++ = 0;
+    }
+  } else {
+    if (LOADER_SEEK_FROM_START(e->fd, h->sh_offset) != 0) {
+      ERR("    seek fail");
+      freeSection(s);
+      return -1;
+    }
+    if (LOADER_READ(e->fd, s->data, h->sh_size) != h->sh_size) {
+      ERR("     read data fail");
+      return -1;
+    }
+    /* DBG("DATA: "); */
+    dumpData(s->data, h->sh_size);
   }
-  if (LOADER_READ(e->fd, s->data, h->sh_size) != h->sh_size) {
-    ERR("     read data fail");
-    return -1;
-  }
-  /* DBG("DATA: "); */
-  dumpData(s->data, h->sh_size);
   return 0;
 }
 
