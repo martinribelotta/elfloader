@@ -50,23 +50,6 @@ typedef enum {
   ELF_SEC_EXEC = 0x4, /*!< Enable for execution (instruction fetch) */
 } ELFSecPerm_t;
 
-
-/**
- * Exported symbol struct
- */
-typedef struct {
-  const char *name; /*!< Name of symbol */
-  void *ptr; /*!< Pointer of symbol in memory */
-} ELFSymbol_t;
-
-/**
- * Environment for execution
- */
-typedef struct {
-  const ELFSymbol_t *exported; /*!< Pointer to exported symbols array */
-  unsigned int exported_size; /*!< Elements on exported symbol array */
-} ELFEnv_t;
-
 typedef void (entry_t)(void);
 
 typedef struct ELFExec ELFExec_t;
@@ -74,12 +57,12 @@ typedef struct ELFExec ELFExec_t;
 /**
  * Load ELF file from "path" with environment "env"
  * @param path Path to file to load
- * @param env Pointer to environment struct
+ * @param user_data Pointer to user data
  * @param exec returns pointer to ELFExec_t struct
  * @retval 0 On successful
  * @todo Error information
  */
-extern int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t **exec);
+extern int load_elf(const char *path, void * user_data, ELFExec_t **exec);
 
 /**
  * Unload ELF

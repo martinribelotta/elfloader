@@ -67,9 +67,8 @@ typedef struct ELFExec {
   ELFSection_t sdram_data;
   ELFSection_t sdram_bss;
 
-  void *stack;
+  void *user_data;
 
-  const ELFEnv_t *env;
 } ELFExec_t;
 
 
@@ -319,10 +318,7 @@ static ELFSection_t *sectionOf(ELFExec_t *e, int index) {
 
 static Elf32_Addr addressOf(ELFExec_t *e, Elf32_Sym *sym, const char *sName) {
   if (sym->st_shndx == SHN_UNDEF) {
-    int i;
-    for (i = 0; i < e->env->exported_size; i++)
-      if (LOADER_STREQ(e->env->exported[i].name, sName))
-        return (Elf32_Addr) (e->env->exported[i].ptr);
+    return LOADER_GETUNDEFSYMADDR(e->user_data, sName);
   } else {
     ELFSection_t *symSec = sectionOf(e, sym->st_shndx);
     if (symSec)
@@ -660,7 +656,7 @@ void* get_func(ELFExec_t *exec, const char *func_name) {
   return get_sym(exec, func_name, STT_FUNC);
 }
 
-int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t **exec_ptr) {
+int load_elf(const char *path, void * user_data, ELFExec_t **exec_ptr) {
   ELFExec_t *exec;
   exec = LOADER_ALIGN_ALLOC(sizeof(ELFExec_t), 4, ELF_SEC_READ | ELF_SEC_WRITE);
   if (!exec) {
@@ -671,7 +667,7 @@ int load_elf(const char *path, const ELFEnv_t *env, ELFExec_t **exec_ptr) {
     DBG("Invalid elf %s\n", path);
     return -1;
   }
-  exec->env = env;
+  exec->user_data = user_data;
   if (!IS_FLAGS_SET(loadSymbols(exec), FoundValid)) {
     return -2;
   }

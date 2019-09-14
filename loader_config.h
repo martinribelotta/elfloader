@@ -43,6 +43,9 @@
 
 #define LOADER_MAX_SYM_LENGTH 33
 
+
+#define LOADER_GETUNDEFSYMADDR(userdata, name) getUndefinedSymbol(userdata, name)
+
 #if 0
 #define LOADER_FD_T FILE *
 #define LOADER_OPEN_FOR_RD(path) fopen(path, "rb")
@@ -108,6 +111,15 @@ extern void arch_jumpTo(entry_t entry);
  *
  * @{
  */
+
+/**
+ * Undefined-symbol resolver
+ *
+ * @param userdata
+ * @param name symbol name
+ * @retval address of symbol, 0xffffffff if not resolved
+ */
+#define LOADER_GETUNDEFSYMADDR
 
 /**
  * File handler descriptor type macro
@@ -260,5 +272,38 @@ extern void arch_jumpTo(entry_t entry);
 /** @} */
 
 #endif
+
+
+
+/**
+ * Exported symbol struct
+ */
+typedef struct {
+  const char *name; /*!< Name of symbol */
+  void *ptr; /*!< Pointer of symbol in memory */
+} ELFSymbol_t;
+
+/**
+ * Environment for execution
+ */
+typedef struct ELFEnv {
+  const ELFSymbol_t *exported; /*!< Pointer to exported symbols array */
+  unsigned int exported_size; /*!< Elements on exported symbol array */
+} ELFEnv_t;
+
+typedef struct {
+  const struct ELFEnv * env;
+} loader_env_t;
+
+static uint32_t getUndefinedSymbol(void *userdata, const char *sName) {
+  const ELFEnv_t *env = ((loader_env_t *)userdata)->env;
+  int i;
+  for (i = 0; i < env->exported_size; i++)
+    if (LOADER_STREQ(env->exported[i].name, sName))
+      return (uint32_t) (env->exported[i].ptr);
+  DBG("  Can not find address for symbol %s\n", sName);
+  return 0xffffffff;
+}
+
 
 #endif /* LOADER_CONFIG_H_ */

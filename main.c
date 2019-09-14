@@ -35,6 +35,7 @@
 #include <malloc.h>
 
 #include "loader.h"
+#include "loader_config.h"
 #include "app/sysent.h"
 
 #define APP_PATH
@@ -58,7 +59,9 @@ static const ELFEnv_t env = { exports, sizeof(exports) / sizeof(*exports) };
 
 static int exec_elf(const char *path, const ELFEnv_t *env) {
   ELFExec_t *exec;
-  load_elf(path, env, &exec);
+  loader_env_t loader_env;
+  loader_env.env = env;
+  load_elf(path, &loader_env, &exec);
   int ret = jumpTo(exec);
   void (*doit)(void) = get_func(exec, "doit");
   if (doit) {
