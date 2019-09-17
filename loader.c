@@ -324,7 +324,7 @@ static Elf32_Addr addressOf(ELFExec_t *e, Elf32_Sym *sym, const char *sName) {
     if (symSec)
       return ((Elf32_Addr) symSec->data) + sym->st_value;
   }
-  DBG("  Can not find address for symbol %s\n", sName);
+  DBG("  Can't find address for symbol %s\n", sName);
   return 0xffffffff;
 }
 
@@ -456,7 +456,7 @@ static int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
 static int loadSymbols(ELFExec_t *e) {
   int n;
   int founded = 0;
-  MSG("Scan ELF indexs...");
+  MSG("Scan ELF indexes...");
   for (n = 1; n < e->sections; n++) {
     Elf32_Shdr sectHdr;
     char name[LOADER_MAX_SYM_LENGTH] = "<unamed>";
@@ -482,7 +482,9 @@ static int initElf(ELFExec_t *e, LOADER_FD_T f) {
   if (!LOADER_FD_VALID(f))
     return -1;
 
+  void * user_data = e->user_data;
   LOADER_CLEAR(e, sizeof(ELFExec_t));
+  e->user_data = user_data;
 
   if (LOADER_READ(f, &h, sizeof(h)) != sizeof(h))
     return -1;
@@ -663,15 +665,19 @@ int load_elf(const char *path, void * user_data, ELFExec_t **exec_ptr) {
     DBG("allocation failed\n\n");
     return -1;
   }
+  exec->user_data = user_data;
   if (initElf(exec, LOADER_OPEN_FOR_RD(path)) != 0) {
     DBG("Invalid elf %s\n", path);
     return -1;
   }
-  exec->user_data = user_data;
   if (!IS_FLAGS_SET(loadSymbols(exec), FoundValid)) {
+    freeElf(exec);
+    LOADER_FREE(exec);
     return -2;
   }
   if (relocateSections(exec) != 0) {
+    freeElf(exec);
+    LOADER_FREE(exec);
     return -3;
   }
   do_init(exec);
