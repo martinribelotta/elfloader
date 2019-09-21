@@ -67,6 +67,8 @@ typedef struct ELFExec {
   ELFSection_t sdram_data;
   ELFSection_t sdram_bss;
 
+  unsigned int fini_array_size;
+
   void *user_data;
 
 } ELFExec_t;
@@ -420,6 +422,7 @@ static int placeInfo(ELFExec_t *e, Elf32_Shdr *sh, const char *name, int n) {
     if (loadSecData(e, &e->fini_array, sh, sram) == -1)
       return FoundERROR;
     e->fini_array.secIdx = n;
+    e->fini_array_size = sh->sh_size;
     return FoundFiniArray;
   } else if (LOADER_STREQ(name, ".rel.text")) {
     e->text.relSecIdx = n;
@@ -593,15 +596,9 @@ static void do_init(ELFExec_t *e) {
 
 static void do_fini(ELFExec_t *e) {
   if (e->fini_array.data) {
-    MSG("Processing section .fini_array.");
-    Elf32_Shdr sectHdr;
-    if (readSecHeader(e, e->fini_array.secIdx, &sectHdr) != 0) {
-      ERR("Error reading section header");
-      return;
-    }
     entry_t **entry = (entry_t**) (e->fini_array.data);
     int i;
-    int n = sectHdr.sh_size >> 2;
+    int n = e->fini_array_size >> 2;
     for(i=0;i<n;i++) {
       DBG("Processing .fini_array[%d] : %08x->%08x\n", i, (int)entry, (int)*entry);
       (*entry)();
