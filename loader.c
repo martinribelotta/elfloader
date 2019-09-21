@@ -292,6 +292,10 @@ static int relocateSymbol(Elf32_Addr relAddr, int type, Elf32_Addr symAddr) {
     *((uint32_t*) relAddr) += symAddr;
     DBG("  R_ARM_TARGET1 relocated is 0x%08X\n", *((uint32_t* )relAddr));
     break;
+  case R_ARM_THM_JUMP11:
+    MSG("  R_ARM_THM_JUMP11 DISCARDED!\n");
+    // TODO : implement relocation type R_ARM_THM_JUMP11
+    break;
   default:
     DBG("  Undefined relocation %d\n", type);
     return -1;
