@@ -355,8 +355,10 @@ static int relocate(ELFExec_t *e, Elf32_Shdr *h, ELFSection_t *s,
         symAddr = addressOf(e, &sym, name);
         if (symAddr != 0xffffffff) {
           DBG("  symAddr=%08X relAddr=%08X\n", symAddr, relAddr);
-          if (relocateSymbol(relAddr, relType, symAddr) == -1)
+          if (relocateSymbol(relAddr, relType, symAddr) == -1) {
+            ERR("relocate failed of sym %s, type %d", name, relType);
             return -1;
+          }
         } else {
           DBG("  No symbol address of %s\n", name);
           return -1;

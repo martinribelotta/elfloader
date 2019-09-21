@@ -95,7 +95,7 @@ extern void arch_jumpTo(entry_t entry);
 #endif
 
 #define DBG(...) printf("ELF: " __VA_ARGS__)
-#define ERR(msg) do { perror("ELF: " msg); __asm__ volatile ("bkpt"); } while(0)
+#define ERR(...) do { printf("ELF: " __VA_ARGS__); __asm__ volatile ("bkpt"); } while(0)
 #define MSG(msg) puts("ELF: " msg)
 
 #else
@@ -265,7 +265,7 @@ extern void arch_jumpTo(entry_t entry);
  *
  * This macro is used on information or recoverable warnings mesages
  *
- * @param msg C string printable text
+ * @param ... printf style format and variadic argument list
  */
 #define MSG(msg)
 
