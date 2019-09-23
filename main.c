@@ -61,7 +61,7 @@ static int exec_elf(const char *path, const ELFEnv_t *env) {
   ELFExec_t *exec;
   loader_env_t loader_env;
   loader_env.env = env;
-  load_elf(path, &loader_env, &exec);
+  load_elf(path, loader_env, &exec);
   int ret = jumpTo(exec);
   void (*doit)(void) = get_func(exec, "doit");
   if (doit) {

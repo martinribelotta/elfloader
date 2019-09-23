@@ -32,6 +32,8 @@
 #ifndef LOADER_H_
 #define LOADER_H_
 
+#include <loader_userdata.h>
+
 #ifdef __cplusplus__
 extern "C" {
 #endif
@@ -62,7 +64,7 @@ typedef struct ELFExec ELFExec_t;
  * @retval 0 On successful
  * @todo Error information
  */
-extern int load_elf(const char *path, void * user_data, ELFExec_t **exec);
+extern int load_elf(const char *path, LOADER_USERDATA_T user_data, ELFExec_t **exec);
 
 /**
  * Unload ELF

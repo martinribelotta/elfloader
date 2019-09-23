@@ -42,12 +42,11 @@
 #ifndef DOX
 
 #define LOADER_MAX_SYM_LENGTH 33
-
+#define LOADER_USERDATA_T loader_env_t
 
 #define LOADER_GETUNDEFSYMADDR(userdata, name) getUndefinedSymbol(userdata, name)
 
 #if 0
-#define LOADER_FD_T FILE *
 #define LOADER_OPEN_FOR_RD(path) fopen(path, "rb")
 #define LOADER_FD_VALID(fd) (fd != NULL)
 #define LOADER_READ(fd, buffer, size) fread(buffer, 1, size, fd)
@@ -56,14 +55,13 @@
 #define LOADER_SEEK_FROM_START(fd, off) fseek(fd, off, SEEK_SET)
 #define LOADER_TELL(fd) ftell(fd)
 #else
-#define LOADER_FD_T int
-#define LOADER_OPEN_FOR_RD(path) open(path, O_RDONLY)
-#define LOADER_FD_VALID(fd) (fd != -1)
-#define LOADER_READ(fd, buffer, size) read(fd, buffer, size)
-#define LOADER_WRITE(fd, buffer, size) write(fd, buffer, size)
-#define LOADER_CLOSE(fd) close(fd)
-#define LOADER_SEEK_FROM_START(fd, off) (lseek(fd, off, SEEK_SET) == -1)
-#define LOADER_TELL(fd) lseek(fd, 0, SEEK_CUR)
+#define LOADER_OPEN_FOR_RD(userdata, path) userdata.fd=open(path, O_RDONLY)
+#define LOADER_FD_VALID(userdata) (userdata.fd != -1)
+#define LOADER_READ(userdata, buffer, size) read(userdata.fd, buffer, size)
+#define LOADER_WRITE(userdata, buffer, size) write(userdata.fd, buffer, size)
+#define LOADER_CLOSE(userdata) close(userdata.fd)
+#define LOADER_SEEK_FROM_START(userdata, off) (lseek(userdata.fd, off, SEEK_SET) == -1)
+#define LOADER_TELL(userdata) lseek(userdata.fd, 0, SEEK_CUR)
 #endif
 
 #if 0
@@ -81,7 +79,6 @@ extern void *do_alloc_sdram(size_t size, size_t align, ELFSecPerm_t perm);
 extern int is_streq(const char *s1, const char *s2);
 
 #define LOADER_FREE(ptr) free(ptr)
-#define LOADER_CLEAR(ptr, size) memset(ptr, 0, size)
 #define LOADER_STREQ(s1, s2) (is_streq(s1, s2))
 
 #if 0
@@ -122,11 +119,11 @@ extern void arch_jumpTo(entry_t entry);
 #define LOADER_GETUNDEFSYMADDR
 
 /**
- * File handler descriptor type macro
+ * Userdata descriptor type macro
  *
- * This define the file handler declaration type
+ * This define the userdata declaration type
  */
-#define LOADER_FD_T
+#define LOADER_USERDATA_T
 
 /**
  * Open for read function macro
@@ -134,9 +131,10 @@ extern void arch_jumpTo(entry_t entry);
  * This macro define the function name and convention call to open file for
  * read. This need to return #LOADER_FD_T type
  *
+ * @param userdata User data object
  * @param path Path to file for open
  */
-#define LOADER_OPEN_FOR_RD(path)
+#define LOADER_OPEN_FOR_RD(userdata, path)
 
 /**
  * Macro for check file descriptor validity
@@ -144,51 +142,51 @@ extern void arch_jumpTo(entry_t entry);
  * This macro is used for check the validity of #LOADER_FD_T after open
  * operation
  *
- * @param fd File descriptor object
+ * @param userdata User data
  * @retval Zero if fd is unusable
  * @retval Non-zero if fd is usable
  */
-#define LOADER_FD_VALID(fd)
+#define LOADER_FD_VALID(userdata)
 
 /**
  * Macro for read buffer from file
  *
  * This macro is used when need read a block for the #LOADER_FD_T previous
  * opened.
- * @param fd File descriptor
+ * @param userdata User data
  * @param buffer Writable buffer to store read data
  * @param size Number of bytes to read
  */
-#define LOADER_READ(fd, buffer, size)
+#define LOADER_READ(userdata, buffer, size)
 
 /**
  * Close file macro
  *
  * Close a file descriptor previously opened with LOADER_OPEN_FOR_RD
  *
- * @param fd File descriptor to close
+ * @param userdata User data object
  */
-#define LOADER_CLOSE(fd)
+#define LOADER_CLOSE(userdata)
 
 /**
  * Seek read cursor of file
  *
  * Seek read cursor from begin of file
  *
- * @param fd File descriptor
+ * @param userdata User data
  * @param off Offset from begin of file
  */
-#define LOADER_SEEK_FROM_START(fd, off)
+#define LOADER_SEEK_FROM_START(userdata, off)
 
 /**
  * Tell cursor of file
  *
  * Tell current read cursor of file
  *
- * @param fd File descriptor
+ * @param userdata User data
  * @return The current read cursor position
  */
-#define LOADER_TELL(fd)
+#define LOADER_TELL(userdata)
 
 /**
  * Allocate memory service
@@ -210,16 +208,6 @@ extern void arch_jumpTo(entry_t entry);
  * @param ptr Pointer to allocated memory to free
  */
 #define LOADER_FREE(ptr)
-
-/**
- * Clear memory block
- *
- * Set to zero memory block
- *
- * @param ptr Pointer to memory
- * @param size Bytes to clear
- */
-#define LOADER_CLEAR(ptr, size)
 
 /**
  * Compare string
@@ -291,12 +279,8 @@ typedef struct ELFEnv {
   unsigned int exported_size; /*!< Elements on exported symbol array */
 } ELFEnv_t;
 
-typedef struct {
-  const struct ELFEnv * env;
-} loader_env_t;
-
-static uint32_t getUndefinedSymbol(void *userdata, const char *sName) {
-  const ELFEnv_t *env = ((loader_env_t *)userdata)->env;
+static uint32_t getUndefinedSymbol(LOADER_USERDATA_T *userdata, const char *sName) {
+  const ELFEnv_t *env = userdata->env;
   int i;
   for (i = 0; i < env->exported_size; i++)
     if (LOADER_STREQ(env->exported[i].name, sName))
