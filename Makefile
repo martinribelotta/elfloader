@@ -1,4 +1,4 @@
-SRC=main.c loader.c arm/fault.c
+SRC=host/main.c loader.c arm/fault.c
 ASRC=arm/startup_ARMCM4.S
 
 TARGET=elfloader
@@ -10,7 +10,7 @@ LD=$(CROSS)gcc
 
 CFLAGS=-O0 -ggdb3 -mcpu=cortex-m3 -mthumb \
 	-flto -ffunction-sections -fdata-sections \
-	-Iarm/CMSIS/include -I.
+	-Iarm/CMSIS/include -I. -Ihost
 
 LDFLAGS=--specs=rdimon.specs \
   -g \
