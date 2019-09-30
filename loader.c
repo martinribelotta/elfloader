@@ -493,16 +493,6 @@ static int initElf(ELFExec_t *e) {
   if (LOADER_READ(e->user_data, &h, sizeof(h)) != sizeof(h))
     return -1;
 
-  if (LOADER_SEEK_FROM_START(e->user_data, h.e_shoff + h.e_shstrndx * sizeof(sH)) != 0)
-    return -1;
-  if (LOADER_READ(e->user_data, &sH, sizeof(Elf32_Shdr)) != sizeof(Elf32_Shdr))
-    return -1;
-
-  e->entry = h.e_entry;
-  e->sections = h.e_shnum;
-  e->sectionTable = h.e_shoff;
-  e->sectionTableStrings = sH.sh_offset;
-
   const char elfmagic[EI_MAGIC_SIZE] = EI_MAGIC;
   if (h.e_ident[EI_MAG0] != elfmagic[EI_MAG0]) return 1;
   if (h.e_ident[EI_MAG1] != elfmagic[EI_MAG1]) return 1;
@@ -512,6 +502,16 @@ static int initElf(ELFExec_t *e) {
   if (h.e_type != ET_REL) return 1;
   if (h.e_machine != EM_ARM) return 1;
   if (h.e_version != EV_CURRENT) return 1;
+
+  if (LOADER_SEEK_FROM_START(e->user_data, h.e_shoff + h.e_shstrndx * sizeof(sH)) != 0)
+    return -1;
+  if (LOADER_READ(e->user_data, &sH, sizeof(Elf32_Shdr)) != sizeof(Elf32_Shdr))
+    return -1;
+
+  e->entry = h.e_entry;
+  e->sections = h.e_shnum;
+  e->sectionTable = h.e_shoff;
+  e->sectionTableStrings = sH.sh_offset;
 
   return 0;
 }
