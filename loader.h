@@ -100,6 +100,16 @@ extern void * get_func(ELFExec_t *exec, const char *func_name);
  */
 extern void * get_obj(ELFExec_t *exec, const char *obj_name);
 
+/**
+ * Get symbol
+ * @param exec Pointer to ELFExec_t struct
+ * @param symbol name (mangled if C++)
+ * @retval value, 0 On failure
+ * @todo Error information
+ */
+extern void * get_sym(ELFExec_t *exec, const char *sym_name, int symbol_type);
+
+
 /** @} */
 
 #ifdef __cplusplus__

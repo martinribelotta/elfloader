@@ -608,7 +608,7 @@ static void do_fini(ELFExec_t *e) {
   }
 }
 
-static void* get_sym(ELFExec_t *exec, const char *sym_name, int symbol_type) {
+void* get_sym(ELFExec_t *exec, const char *sym_name, int symbol_type) {
   off_t old = LOADER_TELL(exec->user_data);
   off_t pos = exec->symbolTable;
   if (LOADER_SEEK_FROM_START(exec->user_data, pos) != 0) {
@@ -631,6 +631,10 @@ static void* get_sym(ELFExec_t *exec, const char *sym_name, int symbol_type) {
             ELFSection_t *symSec = sectionOf(exec, sym.st_shndx);
             if (symSec) {
               addr = (entry_t*) (((Elf32_Addr) symSec->data) + sym.st_value);
+              DBG("sym \"%s\" found @ %08x\n", name, addr);
+              break;
+            } else if (symbol_type == STT_NOTYPE) {
+              addr = sym.st_value;
               DBG("sym \"%s\" found @ %08x\n", name, addr);
               break;
             }
