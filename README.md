@@ -1,5 +1,7 @@
 # elfloader
 
+For contributing list see [CONTRIBUTORS.md](CONTRIBUTORS.md)
+
 ## ARMv7M ELF loader
 
 The goal of this project is provide a loader for ELF file format for ARMv7-M
