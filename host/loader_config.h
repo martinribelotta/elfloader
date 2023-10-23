@@ -31,13 +31,8 @@
 #ifndef LOADER_CONFIG_H_
 #define LOADER_CONFIG_H_
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 
 #ifndef DOX
 
@@ -47,14 +42,38 @@
 #define LOADER_GETUNDEFSYMADDR(userdata, name) getUndefinedSymbol(userdata, name)
 
 #if 0
-#define LOADER_OPEN_FOR_RD(path) fopen(path, "rb")
-#define LOADER_FD_VALID(fd) (fd != NULL)
-#define LOADER_READ(fd, buffer, size) fread(buffer, 1, size, fd)
-#define LOADER_WRITE(fd, buffer, size) fwrite(buffer, 1, size, fd)
-#define LOADER_CLOSE(fd) fclose(fd)
-#define LOADER_SEEK_FROM_START(fd, off) fseek(fd, off, SEEK_SET)
-#define LOADER_TELL(fd) ftell(fd)
-#else
+
+#include <stdio.h>
+
+typedef struct loader_env {
+  FILE *fd;
+  const struct ELFEnv * env;
+} loader_env_t;
+
+#define LOADER_USERDATA_T loader_env_t
+
+#define LOADER_OPEN_FOR_RD(userdata, path) userdata.fd = fopen(path, "rb")
+#define LOADER_FD_VALID(userdata) (userdata.fd != NULL)
+#define LOADER_READ(userdata, buffer, size) fread(buffer, 1, size, userdata.fd)
+#define LOADER_WRITE(userdata, buffer, size) fwrite(buffer, 1, size, userdata.fd)
+#define LOADER_CLOSE(userdata) fclose(userdata.fd)
+#define LOADER_SEEK_FROM_START(userdata, off) fseek(userdata.fd, off, SEEK_SET)
+#define LOADER_TELL(userdata) ftell(userdata.fd)
+
+#elif 1
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+typedef struct loader_env {
+  int fd;
+  const struct ELFEnv * env;
+} loader_env_t;
+
+#define LOADER_USERDATA_T loader_env_t
+
 #define LOADER_OPEN_FOR_RD(userdata, path) userdata.fd=open(path, O_RDONLY)
 #define LOADER_FD_VALID(userdata) (userdata.fd != -1)
 #define LOADER_READ(userdata, buffer, size) read(userdata.fd, buffer, size)
@@ -62,6 +81,45 @@
 #define LOADER_CLOSE(userdata) close(userdata.fd)
 #define LOADER_SEEK_FROM_START(userdata, off) (lseek(userdata.fd, off, SEEK_SET) == -1)
 #define LOADER_TELL(userdata) lseek(userdata.fd, 0, SEEK_CUR)
+
+#else
+
+#include <ff.h>
+
+typedef struct loader_env {
+  FIL fd;
+  FRESULT ret;
+  const struct ELFEnv * env;
+} loader_env_t;
+
+#define LOADER_USERDATA_T loader_env_t
+
+static inline size_t wrap_f_read(LOADER_USERDATA_T *u, void *buf, size_t n)
+{
+  UINT count = 0;
+  u->ret = f_read(u->fd, buf, n, &count);
+  if (u->ret == FR_OK)
+    return count;
+  return -1;
+}
+
+static inline size_t wrap_f_write(LOADER_USERDATA_T *u, const void *buf, size_t n)
+{
+  UINT count = 0;
+  u->ret = f_write(u->fd, buf, n, &count);
+  if (u->ret == FR_OK)
+    return count;
+  return -1;
+}
+
+#define LOADER_OPEN_FOR_RD(userdata, path) userdata.ret=open(&userdata.fd, path, O_RDONLY)
+#define LOADER_FD_VALID(userdata) (userdata.ret != FR_OK)
+#define LOADER_READ(userdata, buffer, size) wrap_f_read(&userdata.fd, buffer, size)
+#define LOADER_WRITE(userdata, buffer, size) wrap_f_write(&userdata.fd, buffer, size)
+#define LOADER_CLOSE(userdata) f_close(&userdata.fd)
+#define LOADER_SEEK_FROM_START(userdata, off) (f_lseek(&userdata.fd, off) == FR_OK)
+#define LOADER_TELL(userdata) f_tell(&userdata.fd)
+
 #endif
 
 #if 0
